@@ -28,9 +28,9 @@ export function peerOptions(): PeerOptions {
 /** Lobby API base, or null when running without the DJ4YOU server. */
 export const LOBBY_URL: string | null = SIGNAL_URL ? `${SIGNAL_URL.replace(/\/$/, '')}/lobby` : null
 
-/** WebRTC is missing in some embedded frames (e.g. Artifact previews). */
+/** The single-file Artifact build runs where WebRTC is blocked; some browsers lack it. */
 export function liveSupported(): boolean {
-  return typeof RTCPeerConnection !== 'undefined'
+  return import.meta.env.MODE !== 'artifact' && typeof RTCPeerConnection !== 'undefined'
 }
 
 export const MAX_LISTENERS = 20

@@ -63,7 +63,7 @@ export function LiveSheet({ open, onClose }: { open: boolean; onClose: () => voi
 
         <div className="sheet-body">
           {!supported && (
-            <p className="lib-note">Live streaming isn't available in this view. Open DJ4YOU in your browser to go live.</p>
+            <p className="lib-note">Live streaming isn't available in this preview. Open the DJ4YOU website to go live.</p>
           )}
 
           {(live.status === 'idle' || live.status === 'error') && (
