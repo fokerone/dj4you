@@ -34,7 +34,7 @@ export function DeckView({ deck, other, onOpenLibrary }: { deck: Deck; other: De
 
   return (
     <section
-      className={`deck deck-${state.id.toLowerCase()} ${dragOver ? 'drag-over' : ''}`}
+      className={`deck deck-${state.id.toLowerCase()} ${dragOver ? 'drag-over' : ''} ${state.playing ? 'is-playing' : ''}`}
       aria-label={`Deck ${state.id}`}
       onDragOver={(e) => {
         e.preventDefault()

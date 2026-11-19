@@ -6,6 +6,12 @@ import { LibrarySheet } from './components/LibrarySheet'
 import { LiveButton, LiveSheet } from './components/LiveSheet'
 import { Crossfader, MixerView } from './components/MixerView'
 import { RecButton } from './components/RecButton'
+import { Coach, Hud, PhaseMeter, Popups } from './components/Hud'
+import { Stage } from './components/Stage'
+import { Welcome } from './components/Welcome'
+import { shouldWelcome } from './game/welcome'
+import { buzz } from './game/haptics'
+import { SHORTCUTS, useShortcuts } from './hooks/useShortcuts'
 import { useStore } from './hooks/useEngine'
 import type { RecordingMeta } from './library/library'
 
@@ -24,6 +30,19 @@ export default function App() {
   const openLive = useCallback(() => setLiveOpen(true), [])
   const closeLive = useCallback(() => setLiveOpen(false), [])
   const [toast, setToast] = useState<string | null>(null)
+  const [welcome, setWelcome] = useState(shouldWelcome)
+  const [keysOpen, setKeysOpen] = useState(false)
+  const toggleKeys = useCallback(() => setKeysOpen((o) => !o), [])
+  useShortcuts(toggleKeys)
+
+  // A tiny tick of vibration on every control press (phones that support it).
+  useEffect(() => {
+    const onDown = (e: PointerEvent) => {
+      if ((e.target as HTMLElement | null)?.closest('.btn, .pad, .tab, .pad-mode')) buzz(8)
+    }
+    window.addEventListener('pointerdown', onDown, { passive: true })
+    return () => window.removeEventListener('pointerdown', onDown)
+  }, [])
   const [deckA, deckB] = engine.decks
   const openLibrary = useCallback(() => setLibraryOpen(true), [])
   const closeLibrary = useCallback(() => setLibraryOpen(false), [])
@@ -37,10 +56,14 @@ export default function App() {
 
   return (
     <div className="app">
+      <Stage />
       <header className="topbar">
         <h1 className="logo">
           DJ<span>4</span>YOU
         </h1>
+        <button className="btn btn-small btn-keys" onClick={toggleKeys} aria-expanded={keysOpen}>
+          Keys
+        </button>
       </header>
 
       <nav className="tabs" role="tablist" aria-label="Desk sections">
@@ -53,6 +76,9 @@ export default function App() {
       </nav>
 
       <main className="desk" data-tab={tab}>
+        <div className="panel-hud">
+          <Hud />
+        </div>
         <div className="panel panel-a">
           <DeckView deck={deckA} other={deckB} onOpenLibrary={openLibrary} />
         </div>
@@ -68,12 +94,34 @@ export default function App() {
           <DeckView deck={deckB} other={deckA} onOpenLibrary={openLibrary} />
         </div>
         <div className="panel-xfader">
+          <PhaseMeter />
           <Crossfader mixer={engine.mixer} />
           <RecButton className="rec-in-dock" onSaved={onRecSaved} />
         </div>
       </main>
 
       <LiveSheet open={liveOpen} onClose={closeLive} />
+      <Coach />
+      <Popups />
+      {keysOpen && (
+        <div className="keys" role="dialog" aria-label="Keyboard shortcuts">
+          <header>
+            <b>Keyboard shortcuts</b>
+            <button className="btn btn-small" onClick={toggleKeys} aria-label="Close">
+              ✕
+            </button>
+          </header>
+          <dl>
+            {SHORTCUTS.map(([k, v]) => (
+              <div key={k}>
+                <dt>{k}</dt>
+                <dd>{v}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      )}
+      {welcome && <Welcome onDone={() => setWelcome(false)} />}
 
       <LibrarySheet
         open={libraryOpen}

@@ -10,10 +10,18 @@ export interface Analysis {
   /** Detailed peaks for the scrolling waveform, `detailRate` bins per second */
   detail: Float32Array<ArrayBuffer>
   detailRate: number
+  /** Per-band peaks for the coloured waveform (same bins as `detail`) */
+  bands: Bands
   /** Detected tempo, or null if no clear beat was found */
   bpm: number | null
   /** Time of the first beat-grid line in seconds (0 <= firstBeat < 60/bpm) */
   firstBeat: number
+}
+
+export interface Bands {
+  low: Float32Array<ArrayBuffer>
+  mid: Float32Array<ArrayBuffer>
+  high: Float32Array<ArrayBuffer>
 }
 
 export const DETAIL_RATE = 150
@@ -31,8 +39,9 @@ export function analyze(mono: Float32Array, sampleRate: number): Analysis {
   const peaks = normalize(binPeaks(mono, OVERVIEW_BINS))
   const detailBins = Math.max(1, Math.ceil((mono.length / sampleRate) * DETAIL_RATE))
   const detail = normalize(binPeaks(mono, detailBins))
+  const bands = bandPeaks(mono, sampleRate, detailBins)
   const { bpm, firstBeat } = detectTempo(mono, sampleRate)
-  return { peaks, detail, detailRate: DETAIL_RATE, bpm, firstBeat }
+  return { peaks, detail, detailRate: DETAIL_RATE, bands, bpm, firstBeat }
 }
 
 // ---------------------------------------------------------------- peaks
@@ -53,6 +62,50 @@ function binPeaks(data: Float32Array, bins: number): Float32Array<ArrayBuffer> {
     out[b] = max
   }
   return out
+}
+
+/**
+ * Split into lows (< ~200 Hz), highs (> ~2.5 kHz) and the mids in between
+ * with one-pole filters, and keep each band's peak per bin. All three share
+ * one scale so their heights compare.
+ */
+function bandPeaks(x: Float32Array, sr: number, bins: number): Bands {
+  const low = new Float32Array(bins)
+  const mid = new Float32Array(bins)
+  const high = new Float32Array(bins)
+  const aLow = Math.exp((-2 * Math.PI * 200) / sr)
+  const aHigh = Math.exp((-2 * Math.PI * 2500) / sr)
+  let l1 = 0
+  let l2 = 0
+  let h = 0
+  const step = x.length / bins
+  for (let b = 0; b < bins; b++) {
+    const end = Math.min(x.length, Math.floor((b + 1) * step))
+    let ml = 0
+    let mm = 0
+    let mh = 0
+    for (let i = Math.floor(b * step); i < end; i++) {
+      const s = x[i]
+      l1 = (1 - aLow) * s + aLow * l1
+      l2 = (1 - aLow) * l1 + aLow * l2
+      h = (1 - aHigh) * s + aHigh * h
+      const hi = s - h
+      const md = h - l2
+      if (l2 > ml) ml = l2
+      else if (-l2 > ml) ml = -l2
+      if (md > mm) mm = md
+      else if (-md > mm) mm = -md
+      if (hi > mh) mh = hi
+      else if (-hi > mh) mh = -hi
+    }
+    low[b] = ml
+    mid[b] = mm
+    high[b] = mh
+  }
+  let max = 0
+  for (const a of [low, mid, high]) for (const v of a) if (v > max) max = v
+  if (max > 0) for (const a of [low, mid, high]) for (let i = 0; i < a.length; i++) a[i] /= max
+  return { low, mid, high }
 }
 
 function normalize(a: Float32Array<ArrayBuffer>): Float32Array<ArrayBuffer> {

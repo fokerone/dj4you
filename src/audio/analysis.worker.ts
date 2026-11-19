@@ -14,5 +14,5 @@ const scope = self as unknown as {
 scope.onmessage = (e) => {
   const { id, mono, sampleRate } = e.data
   const result = analyze(mono, sampleRate)
-  scope.postMessage({ id, result }, [result.peaks.buffer, result.detail.buffer])
+  scope.postMessage({ id, result }, [result.peaks.buffer, result.detail.buffer, result.bands.low.buffer, result.bands.mid.buffer, result.bands.high.buffer])
 }

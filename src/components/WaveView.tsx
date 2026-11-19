@@ -84,25 +84,37 @@ export function WaveView({ deck, state }: { deck: Deck; state: DeckState }) {
       beatInBar = ((current % 4) + 4) % 4
     }
 
-    // Waveform: max of the detail bins under each pixel column.
+    // Waveform: max of the bins under each pixel column. With band data the
+    // lows, mids and highs are layered (dim accent / accent / white).
     if (detail) {
       const mid = h / 2
-      const drawRange = (x0: number, x1: number, style: string) => {
-        g.fillStyle = style
+      const drawRange = (data: Float32Array, x0: number, x1: number, scale: number) => {
         for (let x = x0; x < x1; x++) {
           const b0 = Math.floor(tAt(x) * detailRate)
           const b1 = Math.max(b0 + 1, Math.floor(tAt(x + 1) * detailRate))
-          if (b1 <= 0 || b0 >= detail.length) continue
+          if (b1 <= 0 || b0 >= data.length) continue
           let m = 0
-          for (let b = Math.max(0, b0); b < Math.min(detail.length, b1); b++) if (detail[b] > m) m = detail[b]
-          const ph = Math.max(1, m * (h - 8))
+          for (let b = Math.max(0, b0); b < Math.min(data.length, b1); b++) if (data[b] > m) m = data[b]
+          const ph = Math.max(1, m * scale * (h - 6))
           g.fillRect(x, mid - ph / 2, 1, ph)
         }
       }
-      g.globalAlpha = 0.45
-      drawRange(0, Math.floor(center), colors.current.accent)
+      const layers: [Float32Array, string, number, number][] = state.bands
+        ? [
+            [state.bands.low, colors.current.accent, 0.5, 1],
+            [state.bands.mid, colors.current.accent, 1, 0.9],
+            [state.bands.high, '#f8fafc', 0.9, 0.75],
+          ]
+        : [[detail, colors.current.accent, 1, 1]]
+      const split = Math.floor(center)
+      for (const [data, color, alpha, scale] of layers) {
+        g.fillStyle = color
+        g.globalAlpha = alpha * 0.35 // already played
+        drawRange(data, 0, split, scale)
+        g.globalAlpha = alpha
+        drawRange(data, split, Math.ceil(w), scale)
+      }
       g.globalAlpha = 1
-      drawRange(Math.floor(center), Math.ceil(w), colors.current.accent)
     }
 
     // Cue marker

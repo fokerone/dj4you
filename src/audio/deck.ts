@@ -1,3 +1,4 @@
+import type { Bands } from './analysis'
 import { analyzeBuffer } from './analyzer'
 import { faderCurve } from './curves'
 import type { AudioEngine } from './engine'
@@ -48,6 +49,8 @@ export interface DeckState {
   /** Detail peaks for the scrolling waveform */
   readonly detail: Float32Array | null
   readonly detailRate: number
+  /** Low / mid / high peaks for the coloured waveform */
+  readonly bands: Bands | null
   /** Original track tempo; null = unknown */
   readonly bpm: number | null
   /** First beat-grid line, seconds */
@@ -114,6 +117,7 @@ export class Deck extends Store<DeckState> {
       peaks: null,
       detail: null,
       detailRate: 1,
+      bands: null,
       bpm: null,
       firstBeat: 0,
       eq: { low: 0, mid: 0, high: 0 },
@@ -269,6 +273,7 @@ export class Deck extends Store<DeckState> {
       cuePoint: 0,
       peaks: null,
       detail: null,
+      bands: null,
       bpm: null,
       firstBeat: 0,
       hotCues: Array<number | null>(HOT_CUES).fill(null),
@@ -287,6 +292,7 @@ export class Deck extends Store<DeckState> {
         peaks: a.peaks,
         detail: a.detail,
         detailRate: a.detailRate,
+        bands: a.bands,
         bpm: a.bpm,
         firstBeat: a.firstBeat,
       })
