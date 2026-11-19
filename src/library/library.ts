@@ -1,6 +1,7 @@
 import type { Analyzed, Deck } from '../audio/deck'
 import { DEMOS, renderDemo } from '../audio/demo'
 import { Store } from '../audio/store'
+import { locale, t } from '../i18n'
 import { idb, RECORDINGS, TRACKS } from './idb'
 
 export interface TrackMeta {
@@ -125,7 +126,9 @@ export class Library extends Store<LibraryState> {
     const now = new Date()
     const rec: RecordingRecord = {
       id: uid(),
-      name: `DJ4YOU mix ${now.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} ${now.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}`,
+      name: t('DJ4YOU mix {date}', {
+        date: `${now.toLocaleDateString(locale(), { month: 'short', day: 'numeric' })} ${now.toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' })}`,
+      }),
       createdAt: now.getTime(),
       duration,
       size: blob.size,

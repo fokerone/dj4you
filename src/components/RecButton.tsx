@@ -1,3 +1,4 @@
+import { useT } from '../i18n'
 import { useRef } from 'react'
 import { engine } from '../audio/engine'
 import { useAnimationFrame, useStore } from '../hooks/useEngine'
@@ -5,6 +6,7 @@ import { library, type RecordingMeta } from '../library/library'
 
 /** Record the master output. The finished mix is saved to the library. */
 export function RecButton({ onSaved, className }: { onSaved: (r: RecordingMeta | null) => void; className?: string }) {
+  const t = useT()
   const rec = engine.recorder
   const { supported, recording, startedAt, error } = useStore(rec)
   const timeRef = useRef<HTMLSpanElement>(null)
@@ -21,7 +23,7 @@ export function RecButton({ onSaved, className }: { onSaved: (r: RecordingMeta |
     <button
       className={`btn btn-rec ${recording ? 'is-on' : ''} ${className ?? ''}`}
       aria-pressed={recording}
-      title={error ?? (recording ? 'Stop recording and save to the library' : 'Record your mix')}
+      title={error ?? t(recording ? 'Stop recording and save to the library' : 'Record your mix')}
       onClick={() => {
         if (recording) {
           rec.stop()
@@ -32,7 +34,7 @@ export function RecButton({ onSaved, className }: { onSaved: (r: RecordingMeta |
       }}
     >
       <span className="rec-dot" aria-hidden />
-      {recording ? <span ref={timeRef}>0:00</span> : 'REC'}
+      {recording ? <span ref={timeRef}>0:00</span> : t('REC')}
     </button>
   )
 }

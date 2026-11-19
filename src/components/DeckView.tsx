@@ -1,3 +1,4 @@
+import { useT } from '../i18n'
 import { useRef, useState } from 'react'
 import type { Deck } from '../audio/deck'
 import { useAnimationFrame, useStore } from '../hooks/useEngine'
@@ -9,6 +10,7 @@ import { PadRow } from './PadRow'
 import { WaveView } from './WaveView'
 
 export function DeckView({ deck, other, onOpenLibrary }: { deck: Deck; other: Deck; onOpenLibrary: () => void }) {
+  const t = useT()
   const state = useStore(deck)
   const otherState = useStore(other)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -35,7 +37,7 @@ export function DeckView({ deck, other, onOpenLibrary }: { deck: Deck; other: De
   return (
     <section
       className={`deck deck-${state.id.toLowerCase()} ${dragOver ? 'drag-over' : ''} ${state.playing ? 'is-playing' : ''}`}
-      aria-label={`Deck ${state.id}`}
+      aria-label={t('Deck {id}', { id: state.id })}
       onDragOver={(e) => {
         e.preventDefault()
         setDragOver(true)
@@ -51,7 +53,7 @@ export function DeckView({ deck, other, onOpenLibrary }: { deck: Deck; other: De
         <span className="deck-badge">{state.id}</span>
         <div className="deck-track">
           <div className="deck-title" title={state.trackName ?? undefined}>
-            {state.error ?? state.trackName ?? 'Load a track or open the Library'}
+            {state.error ?? state.trackName ?? t('Load a track or open the Library')}
           </div>
           <div className="deck-clock">
             <span ref={elapsedRef}>0:00.0</span>
@@ -60,22 +62,22 @@ export function DeckView({ deck, other, onOpenLibrary }: { deck: Deck; other: De
             </span>
           </div>
         </div>
-        <div className="deck-bpm" aria-label="Tempo">
+        <div className="deck-bpm" aria-label={t('Tempo')}>
           <b>{bpm === null ? (state.analyzing ? '…' : '--') : bpm.toFixed(1)}</b>
           <span>BPM</span>
         </div>
         <div className="deck-load">
-          <button className="btn btn-load" onClick={() => fileRef.current?.click()} aria-label="Load track" title="Load a track from this device">
+          <button className="btn btn-load" onClick={() => fileRef.current?.click()} aria-label={t('Load track')} title={t('Load a track from this device')}>
             <svg viewBox="0 0 24 24" aria-hidden>
               <path d="M12 16V4m0 0-5 5m5-5 5 5M5 20h14" />
             </svg>
-            <span className="btn-label">Load</span>
+            <span className="btn-label">{t('Load')}</span>
           </button>
-          <button className="btn btn-load btn-library" onClick={onOpenLibrary} aria-label="Open library" title="Your tracks, demo beats and recordings">
+          <button className="btn btn-load btn-library" onClick={onOpenLibrary} aria-label={t('Open library')} title={t('Your tracks, demo beats and recordings')}>
             <svg viewBox="0 0 24 24" aria-hidden>
               <path d="M9 18V5l11-2v13M9 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm11-2a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
             </svg>
-            <span className="btn-label">Library</span>
+            <span className="btn-label">{t('Library')}</span>
           </button>
         </div>
         <input
@@ -98,7 +100,7 @@ export function DeckView({ deck, other, onOpenLibrary }: { deck: Deck; other: De
           <button
             className={`btn btn-sync ${inSync ? 'is-on' : ''}`}
             disabled={!canSync}
-            title={canSync ? `Match tempo and beats to deck ${other.id}` : 'Needs a BPM on both decks'}
+            title={canSync ? t('Match tempo and beats to deck {id}', { id: other.id }) : t('Needs a BPM on both decks')}
             onClick={() => deck.syncTo(other)}
           >
             SYNC
@@ -129,7 +131,7 @@ export function DeckView({ deck, other, onOpenLibrary }: { deck: Deck; other: De
 
         <div className="pitch">
           <Fader
-            label="Tempo"
+            label={t('Tempo')}
             className="fader-pitch"
             min={-state.pitchRange}
             max={state.pitchRange}

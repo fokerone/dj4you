@@ -83,13 +83,6 @@ body {
   font-family: var(--font-display);
 }
 
-.logo span {
-  background: linear-gradient(90deg, var(--deck-a), var(--deck-b));
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-
 .wave,
 .overview {
   background: rgb(5 6 10 / 0.75);
@@ -857,13 +850,6 @@ body[data-coach='load-b'] .lib-row .btn-to-b {
   line-height: 1;
 }
 
-.welcome-logo span {
-  background: linear-gradient(90deg, var(--deck-a), var(--deck-b));
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-
 .welcome-tag {
   margin: 0;
   font-size: 1.05rem;
@@ -923,7 +909,7 @@ body[data-coach='load-b'] .lib-row .btn-to-b {
 }
 
 .btn-keys {
-  margin-left: auto;
+  margin-left: 0;
 }
 
 @media (pointer: coarse) {
@@ -1165,5 +1151,267 @@ body[data-coach='load-b'] .lib-row .btn-to-b {
   }
   .coach p {
     font-size: 0.8rem;
+  }
+}
+
+/* ================= contrast + brand + language (v3) ================= */
+
+:root {
+  --text: #f3f6fb;
+  --dim: #b3bccd;
+  --line: rgb(255 255 255 / 0.12);
+  --panel: rgb(15 18 26 / 0.93);
+  --panel-2: rgb(34 40 56 / 0.96);
+}
+
+/* Small labels: brighter, a touch bigger, always legible over the stage */
+.fader-label,
+.knob-label,
+.hud-label,
+.phase-label,
+.lib-section h3,
+.pad-mode,
+.deck-bpm span,
+.live-stats span {
+  color: #c3cad8;
+  font-size: max(0.68rem, 11px);
+}
+
+.knob-label {
+  font-weight: 800;
+}
+
+.pad small,
+.lib-meta,
+.dim {
+  color: #b3bccd;
+}
+
+.pad-mode[aria-selected='true'] {
+  background: var(--text);
+  color: #07080c;
+}
+
+.knob-track {
+  stroke: rgb(255 255 255 / 0.22);
+}
+
+.fader input[type='range']::-webkit-slider-runnable-track,
+.xfader input[type='range']::-webkit-slider-runnable-track {
+  background: rgb(255 255 255 / 0.1);
+  border-color: rgb(255 255 255 / 0.18);
+}
+
+.deck-title {
+  color: #fff;
+}
+
+.deck-clock span:first-child {
+  color: #fff;
+}
+
+.wave-zoom button {
+  background: rgb(15 18 26 / 0.92);
+  border-color: rgb(255 255 255 / 0.22);
+  color: #fff;
+}
+
+.overview-empty,
+.wave-msg {
+  color: #c3cad8;
+}
+
+.tab {
+  color: #c3cad8;
+}
+
+.tab[aria-selected='true'] {
+  color: #fff;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+}
+
+/* ---------- brand ---------- */
+
+.logo {
+  display: flex;
+  margin: 0;
+  line-height: 1;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.brand-mark {
+  width: 1.35em;
+  height: 1.35em;
+  flex: none;
+  filter: drop-shadow(0 0 6px rgb(34 211 238 / 0.45));
+  animation: disc-spin 6s linear infinite;
+}
+
+.brand-word {
+  color: #fff;
+  text-shadow:
+    0 0 1px #000,
+    0 0 18px rgb(34 211 238 / 0.35);
+}
+
+.brand-word b {
+  font-weight: 700;
+  color: #fb923c;
+  text-shadow:
+    0 0 1px #000,
+    0 0 14px rgb(251 146 60 / 0.6);
+}
+
+.topbar .logo {
+  font-size: 1.5rem;
+}
+
+.welcome-logo .brand-mark {
+  display: none;
+}
+
+.welcome-logo .brand-word b {
+  color: #fb923c;
+}
+
+.listen-top .logo {
+  font-size: 1.35rem;
+}
+
+/* HUD brand: shown where the top bar is hidden (phones) */
+.hud-brand,
+.hud-brand-mark {
+  display: none;
+  grid-area: brand;
+}
+
+@media (orientation: portrait) and (max-width: 899px) {
+  .hud {
+    grid-template-columns: auto auto minmax(0, 1fr) auto;
+    grid-template-areas: 'brand score energy level';
+  }
+  .hud-brand {
+    display: inline-flex;
+    font-size: 0.95rem;
+  }
+  .hud-brand .brand-mark {
+    width: 1.2em;
+    height: 1.2em;
+  }
+}
+
+@media (orientation: portrait) and (max-width: 359px) {
+  .hud-brand {
+    display: none;
+  }
+  .hud-brand-mark {
+    display: inline-flex;
+    font-size: 1.1rem;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 540px) {
+  .hud {
+    grid-template-columns: auto auto minmax(0, 1fr) auto;
+    grid-template-areas: 'brand score energy level';
+  }
+  .hud-brand-mark {
+    display: inline-flex;
+    font-size: 1rem;
+  }
+}
+
+/* ---------- language switch ---------- */
+
+.lang {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.06);
+  border: 1px solid var(--line);
+}
+
+.lang button {
+  min-height: 30px;
+  min-width: 40px;
+  padding: 0 10px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: #c3cad8;
+  font: inherit;
+  font-weight: 800;
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.lang button.is-on {
+  background: #fff;
+  color: #07080c;
+}
+
+.lang button:focus-visible {
+  outline: 2px solid var(--deck-a);
+  outline-offset: 1px;
+}
+
+.topbar-lang {
+  margin-left: auto;
+}
+
+.welcome-lang {
+  position: absolute;
+  top: max(16px, env(safe-area-inset-top));
+  right: max(16px, env(safe-area-inset-right));
+}
+
+.trophies-lang {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: rgb(255 255 255 / 0.04);
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.listen-top {
+  flex-wrap: wrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brand-mark {
+    animation: none;
+  }
+}
+
+.knob-label-short {
+  display: none;
+}
+
+@media (orientation: landscape) and (max-height: 540px) {
+  .knob:has(.knob-label-short) .knob-label:not(.knob-label-short) {
+    display: none;
+  }
+  .knob-label-short {
+    display: block;
   }
 }

@@ -1,3 +1,4 @@
+import { useT } from '../i18n'
 import { useEffect, useRef, useState } from 'react'
 import type { Deck, DeckId } from '../audio/deck'
 import { DEMOS } from '../audio/demo'
@@ -16,6 +17,7 @@ interface Props {
 
 /** Track library: your saved tracks, the demo starter pack and recorded mixes. */
 export function LibrarySheet({ open, onClose, onLoaded }: Props) {
+  const t = useT()
   const lib = useStore(library)
   const inst = useStore(install)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -38,13 +40,13 @@ export function LibrarySheet({ open, onClose, onLoaded }: Props) {
 
   return (
     <div className="sheet-backdrop" onClick={onClose}>
-      <div className="sheet" role="dialog" aria-modal="true" aria-label="Library" onClick={(e) => e.stopPropagation()}>
+      <div className="sheet" role="dialog" aria-modal="true" aria-label={t('Library')} onClick={(e) => e.stopPropagation()}>
         <header className="sheet-head">
-          <h2>Library</h2>
+          <h2>{t('Library')}</h2>
           <button className="btn btn-small" onClick={() => fileRef.current?.click()}>
-            Add tracks
+            {t('Add tracks')}
           </button>
-          <button ref={closeRef} className="btn btn-small" onClick={onClose} aria-label="Close library">
+          <button ref={closeRef} className="btn btn-small" onClick={onClose} aria-label={t('Close library')}>
             ✕
           </button>
           <input
@@ -64,15 +66,14 @@ export function LibrarySheet({ open, onClose, onLoaded }: Props) {
         <div className="sheet-body">
           <section className="lib-section">
             <h3>
-              Your tracks <span className="dim">{lib.tracks.length || ''}</span>
+              {t('Your tracks')} <span className="dim">{lib.tracks.length || ''}</span>
             </h3>
             {lib.unavailable && (
-              <p className="lib-note">This browser is blocking storage, so tracks play but won't be kept after you close the page.</p>
+              <p className="lib-note">{t("This browser is blocking storage, so tracks play but won't be kept after you close the page.")}</p>
             )}
             {lib.tracks.length === 0 ? (
               <p className="lib-empty">
-                Tracks you load are kept here on this device, so they're ready next time. Nothing is uploaded. Tap <b>Add tracks</b> or load a
-                file onto a deck.
+                {t("Tracks you load are kept here on this device, so they're ready next time. Nothing is uploaded. Tap Add tracks or load a file onto a deck.")}
               </p>
             ) : (
               <ul className="lib-list">
@@ -90,13 +91,13 @@ export function LibrarySheet({ open, onClose, onLoaded }: Props) {
           </section>
 
           <section className="lib-section">
-            <h3>Starter pack</h3>
+            <h3>{t('Starter pack')}</h3>
             <ul className="lib-list">
               {DEMOS.map((d, i) => (
                 <TrackRow
                   key={d.name}
                   title={d.name.replace(/^Demo · /, '').replace(/ \(\d+\)$/, '')}
-                  meta={`${d.bpm} BPM · ${formatDuration(demoDuration(d.bpm))} · made in your browser`}
+                  meta={t('{bpm} BPM · {dur} · made in your browser', { bpm: d.bpm, dur: formatDuration(demoDuration(d.bpm)) })}
                   onDeck={(deck) => sendTo(deck, (dk) => library.loadDemo(i, dk))}
                 />
               ))}
@@ -105,12 +106,10 @@ export function LibrarySheet({ open, onClose, onLoaded }: Props) {
 
           <section className="lib-section">
             <h3>
-              Recordings <span className="dim">{lib.recordings.length || ''}</span>
+              {t('Recordings')} <span className="dim">{lib.recordings.length || ''}</span>
             </h3>
             {lib.recordings.length === 0 ? (
-              <p className="lib-empty">
-                Press <b>REC</b> next to the crossfader to record your mix. Recordings are saved here.
-              </p>
+              <p className="lib-empty">{t('Press REC next to the crossfader to record your mix. Recordings are saved here.')}</p>
             ) : (
               <ul className="lib-list">
                 {lib.recordings.map((r) => (
@@ -124,15 +123,15 @@ export function LibrarySheet({ open, onClose, onLoaded }: Props) {
         <footer className="sheet-foot">
           {lib.usage && (
             <span className="dim">
-              {formatBytes(lib.usage.used)} used on this device · {formatBytes(lib.usage.quota)} available
+              {t('{used} used on this device · {quota} available', { used: formatBytes(lib.usage.used), quota: formatBytes(lib.usage.quota) })}
             </span>
           )}
           {inst.canPrompt && (
             <button className="btn btn-small btn-install" onClick={() => void install.prompt()}>
-              Install app
+              {t('Install app')}
             </button>
           )}
-          {inst.iosHint && <span className="dim">To install: Share → Add to Home Screen</span>}
+          {inst.iosHint && <span className="dim">{t('To install: Share → Add to Home Screen')}</span>}
         </footer>
       </div>
     </div>
@@ -150,6 +149,7 @@ function TrackRow({
   onDeck: (deck: Deck) => void
   onDelete?: () => void
 }) {
+  const t = useT()
   const [a, b] = engine.decks
   return (
     <li className="lib-row">
@@ -160,10 +160,10 @@ function TrackRow({
         <div className="lib-meta">{meta}</div>
       </div>
       <div className="lib-actions">
-        <button className="btn btn-small btn-to-a" onClick={() => onDeck(a)} aria-label={`Load ${title} on deck A`}>
+        <button className="btn btn-small btn-to-a" onClick={() => onDeck(a)} aria-label={t('Load {title} on deck {id}', { title, id: 'A' })}>
           A
         </button>
-        <button className="btn btn-small btn-to-b" onClick={() => onDeck(b)} aria-label={`Load ${title} on deck B`}>
+        <button className="btn btn-small btn-to-b" onClick={() => onDeck(b)} aria-label={t('Load {title} on deck {id}', { title, id: 'B' })}>
           B
         </button>
         {onDelete && <DeleteButton label={title} onDelete={onDelete} />}
@@ -173,6 +173,7 @@ function TrackRow({
 }
 
 function RecordingRow({ rec, embedded }: { rec: RecordingMeta; embedded: boolean }) {
+  const t = useT()
   const [url, setUrl] = useState<string | null>(null)
   const [saved, setSaved] = useState<SaveOutcome | null>(null)
   // Embedded without a download permission: say so instead of a dead button.
@@ -204,20 +205,20 @@ function RecordingRow({ rec, embedded }: { rec: RecordingMeta; embedded: boolean
         <div className="lib-title">{rec.name}</div>
         <div className="lib-meta">
           {formatDuration(rec.duration)} · {formatBytes(rec.size)}
-          {!canDownload && ' · downloads work in the hosted app'}
-          {saved === 'saved' && ' · downloaded'}
-          {saved === 'failed' && " · couldn't download"}
+          {!canDownload && ` · ${t('downloads work in the hosted app')}`}
+          {saved === 'saved' && ` · ${t('downloaded')}`}
+          {saved === 'failed' && ` · ${t("couldn't download")}`}
         </div>
         {url && <audio className="lib-audio" src={url} controls autoPlay />}
       </div>
       <div className="lib-actions">
         {!url && (
-          <button className="btn btn-small" onClick={() => void ensureUrl()} aria-label={`Play ${rec.name}`}>
+          <button className="btn btn-small" onClick={() => void ensureUrl()} aria-label={t('Play {name}', { name: rec.name })}>
             ▶
           </button>
         )}
         {canDownload && (
-          <button className="btn btn-small" onClick={() => void download()} aria-label={`Download ${rec.name}`} title="Download">
+          <button className="btn btn-small" onClick={() => void download()} aria-label={t('Download {name}', { name: rec.name })} title={t('Download')}>
             ⤓
           </button>
         )}
@@ -229,6 +230,7 @@ function RecordingRow({ rec, embedded }: { rec: RecordingMeta; embedded: boolean
 
 /** Two-step delete: first tap arms it for 3 s, second tap deletes. */
 function DeleteButton({ label, onDelete }: { label: string; onDelete: () => void }) {
+  const t = useT()
   const [armed, setArmed] = useState(false)
   useEffect(() => {
     if (!armed) return
@@ -238,11 +240,11 @@ function DeleteButton({ label, onDelete }: { label: string; onDelete: () => void
   return (
     <button
       className={`btn btn-small btn-delete ${armed ? 'is-armed' : ''}`}
-      aria-label={armed ? `Confirm delete ${label}` : `Delete ${label}`}
+      aria-label={armed ? t('Confirm delete {label}', { label }) : t('Delete {label}', { label })}
       onClick={() => (armed ? onDelete() : setArmed(true))}
     >
       {armed ? (
-        'Delete?'
+        t('Delete?')
       ) : (
         <svg viewBox="0 0 24 24" aria-hidden>
           <path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" />

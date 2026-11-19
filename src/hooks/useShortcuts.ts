@@ -1,6 +1,8 @@
 import { useEffect } from 'react'
 import { engine } from '../audio/engine'
 
+/** [keys, description] — descriptions are i18n keys. */
+
 /** PC keyboard shortcuts (shown in the "Keys" panel). */
 export const SHORTCUTS: [string, string][] = [
   ['Q / P', 'Play / pause deck A / B'],

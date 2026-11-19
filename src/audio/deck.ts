@@ -11,6 +11,7 @@ import {
   filterKnobToCutoffs,
 } from './fx'
 import { createMeterTap } from './meter'
+import { t } from '../i18n'
 import { Store } from './store'
 
 export type DeckId = 'A' | 'B'
@@ -240,7 +241,7 @@ export class Deck extends Store<DeckState> {
       this.finishLoad(buffer, token, onAnalyzed)
     } catch {
       if (token !== this.loadToken) return
-      this.set({ loading: false, trackName: null, error: `Couldn't decode "${file.name}"` })
+      this.set({ loading: false, trackName: null, error: t('Couldn\'t decode "{name}"', { name: file.name }) })
     }
   }
 
@@ -253,7 +254,7 @@ export class Deck extends Store<DeckState> {
       this.finishLoad(buffer, token)
     } catch {
       if (token !== this.loadToken) return
-      this.set({ loading: false, trackName: null, error: `Couldn't create "${name}"` })
+      this.set({ loading: false, trackName: null, error: t('Couldn\'t create "{name}"', { name }) })
     }
   }
 

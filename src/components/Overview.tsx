@@ -1,3 +1,4 @@
+import { useT } from '../i18n'
 import { useEffect, useRef } from 'react'
 import type { Deck, DeckState } from '../audio/deck'
 import { useAnimationFrame } from '../hooks/useEngine'
@@ -5,6 +6,7 @@ import { HOT_CUE_COLORS } from './colors'
 
 /** Full-track waveform overview. Tap or drag to seek. */
 export function Overview({ deck, state }: { deck: Deck; state: DeckState }) {
+  const t = useT()
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const headRef = useRef<HTMLDivElement>(null)
   const playedRef = useRef<HTMLDivElement>(null)
@@ -89,7 +91,7 @@ export function Overview({ deck, state }: { deck: Deck; state: DeckState }) {
       {duration > 0 && <div className="overview-cue" style={{ left: `${(cuePoint / duration) * 100}%` }} />}
       <div ref={headRef} className="overview-head" />
       {!peaks && (
-        <div className="overview-empty">{state.loading ? 'Loading…' : state.analyzing ? 'Analyzing…' : 'No track loaded'}</div>
+        <div className="overview-empty">{t(state.loading ? 'Loading…' : state.analyzing ? 'Analyzing…' : 'No track loaded')}</div>
       )}
     </div>
   )

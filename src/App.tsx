@@ -12,6 +12,8 @@ import { Welcome } from './components/Welcome'
 import { shouldWelcome } from './game/welcome'
 import { buzz } from './game/haptics'
 import { SHORTCUTS, useShortcuts } from './hooks/useShortcuts'
+import { Brand, LangSwitch } from './components/Brand'
+import { useT } from './i18n'
 import { useStore } from './hooks/useEngine'
 import type { RecordingMeta } from './library/library'
 
@@ -24,6 +26,7 @@ type Tab = 'A' | 'mixer' | 'B'
  * All panels stay mounted (decks keep playing); CSS decides what is visible.
  */
 export default function App() {
+  const t = useT()
   const [tab, setTab] = useState<Tab>('A')
   const [libraryOpen, setLibraryOpen] = useState(false)
   const [liveOpen, setLiveOpen] = useState(false)
@@ -46,7 +49,7 @@ export default function App() {
   const [deckA, deckB] = engine.decks
   const openLibrary = useCallback(() => setLibraryOpen(true), [])
   const closeLibrary = useCallback(() => setLibraryOpen(false), [])
-  const onRecSaved = useCallback((r: RecordingMeta | null) => setToast(r ? `Saved "${r.name}" to the Library` : null), [])
+  const onRecSaved = useCallback((r: RecordingMeta | null) => setToast(r ? t('Saved "{name}" to the Library', { name: r.name }) : null), [t])
 
   useEffect(() => {
     if (!toast) return
@@ -59,17 +62,18 @@ export default function App() {
       <Stage />
       <header className="topbar">
         <h1 className="logo">
-          DJ<span>4</span>YOU
+          <Brand />
         </h1>
+        <LangSwitch className="topbar-lang" />
         <button className="btn btn-small btn-keys" onClick={toggleKeys} aria-expanded={keysOpen}>
-          Keys
+          {t('Keys')}
         </button>
       </header>
 
-      <nav className="tabs" role="tablist" aria-label="Desk sections">
+      <nav className="tabs" role="tablist" aria-label={t('Desk sections')}>
         <TabButton deck={deckA} active={tab === 'A'} onClick={() => setTab('A')} />
         <button role="tab" aria-selected={tab === 'mixer'} className="tab" onClick={() => setTab('mixer')}>
-          Mixer
+          {t('Mixer')}
         </button>
         <TabButton deck={deckB} active={tab === 'B'} onClick={() => setTab('B')} />
         <LiveButton className="live-in-tabs" onOpen={openLive} />
@@ -104,10 +108,10 @@ export default function App() {
       <Coach />
       <Popups />
       {keysOpen && (
-        <div className="keys" role="dialog" aria-label="Keyboard shortcuts">
+        <div className="keys" role="dialog" aria-label={t('Keyboard shortcuts')}>
           <header>
-            <b>Keyboard shortcuts</b>
-            <button className="btn btn-small" onClick={toggleKeys} aria-label="Close">
+            <b>{t('Keyboard shortcuts')}</b>
+            <button className="btn btn-small" onClick={toggleKeys} aria-label={t('Close')}>
               ✕
             </button>
           </header>
@@ -115,7 +119,7 @@ export default function App() {
             {SHORTCUTS.map(([k, v]) => (
               <div key={k}>
                 <dt>{k}</dt>
-                <dd>{v}</dd>
+                <dd>{t(v)}</dd>
               </div>
             ))}
           </dl>
@@ -136,7 +140,7 @@ export default function App() {
         <div className="toast" role="status">
           <span>{toast}</span>
           <button className="btn btn-small" onClick={() => (setToast(null), setLibraryOpen(true))}>
-            Open
+            {t('Open')}
           </button>
         </div>
       )}
@@ -145,12 +149,13 @@ export default function App() {
 }
 
 function TabButton({ deck, active, onClick }: { deck: Deck; active: boolean; onClick: () => void }) {
+  const t = useT()
   const { id, playing } = useStore(deck)
   return (
     <button role="tab" aria-selected={active} className={`tab tab-${id.toLowerCase()}`} onClick={onClick}>
-      <span className="tab-word">Deck </span>
+      <span className="tab-word">{t('Deck')} </span>
       {id}
-      <span className={`tab-dot ${playing ? 'is-on' : ''}`} aria-label={playing ? 'playing' : undefined} />
+      <span className={`tab-dot ${playing ? 'is-on' : ''}`} aria-label={playing ? t('playing') : undefined} />
     </button>
   )
 }

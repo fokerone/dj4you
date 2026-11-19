@@ -11,6 +11,8 @@ interface KnobProps {
   /** Short text inside / under the knob */
   display?: string
   className?: string
+  /** Abbreviation used where space is tight (landscape phones) */
+  shortLabel?: string
 }
 
 const SWEEP = 270 // degrees of travel
@@ -21,7 +23,7 @@ const DRAG_PX = 160 // pixels of vertical drag for the full range
  * arrow keys for fine steps. The arc is drawn from `center`, so bipolar
  * controls (EQ, filter) show which way they are turned.
  */
-export function Knob({ label, value, min, max, onChange, center = min, display, className }: KnobProps) {
+export function Knob({ label, value, min, max, onChange, center = min, display, className, shortLabel }: KnobProps) {
   const drag = useRef<{ x: number; y: number; v: number } | null>(null)
   const lastTap = useRef(0)
   const range = max - min
@@ -82,6 +84,11 @@ export function Knob({ label, value, min, max, onChange, center = min, display, 
         </div>
       </div>
       <span className="knob-label">{label}</span>
+      {shortLabel && (
+        <span className="knob-label knob-label-short" aria-hidden>
+          {shortLabel}
+        </span>
+      )}
       {display !== undefined && <span className="knob-display">{display}</span>}
     </div>
   )

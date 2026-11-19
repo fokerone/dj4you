@@ -3,6 +3,7 @@ import type { AudioEngine } from '../audio/engine'
 import { readPeak } from '../audio/meter'
 import { crossfaderGains } from '../audio/mixer'
 import { Store } from '../audio/store'
+import { t } from '../i18n'
 import { buzz } from './haptics'
 
 /**
@@ -213,7 +214,7 @@ export class Game extends Store<GameState> {
     const delay = Math.max(0, this.nextAchievementAt - Date.now())
     this.nextAchievementAt = Date.now() + delay + 1800
     window.setTimeout(() => {
-      this.emit('achievement', a.title, a.text)
+      this.emit('achievement', t(a.title), t(a.text))
       buzz([30, 40, 60])
     }, delay)
     this.save()
@@ -224,7 +225,7 @@ export class Game extends Store<GameState> {
     const xp = this.state.xp + p
     const lv = levelInfo(xp)
     if (lv.level > this.state.level) {
-      this.emit('great', `LEVEL ${lv.level}`, lv.title)
+      this.emit('great', t('LEVEL {n}', { n: lv.level }), t(lv.title))
       buzz([40, 30, 40, 30, 80])
     }
     this.set({ score: this.state.score + p, xp, level: lv.level, levelTitle: lv.title, levelProgress: lv.progress })
@@ -283,7 +284,7 @@ export class Game extends Store<GameState> {
       if (this.deadAir > 1.5) {
         energy -= 2
         if (!this.deadWarned && this.state.score > 0) {
-          this.emit('bad', 'DEAD AIR', 'Keep the music playing!')
+          this.emit('bad', t('DEAD AIR'), t('Keep the music playing!'))
           this.deadWarned = true
           buzz(120)
         }
@@ -306,7 +307,7 @@ export class Game extends Store<GameState> {
       if (this.clashSecs >= 1) {
         energy -= 1.2
         if (!this.clashWarned) {
-          this.emit('bad', 'TRAINWRECK', 'Beats are clashing: use SYNC or the jog wheel')
+          this.emit('bad', t('TRAINWRECK'), t('Beats are clashing: use SYNC or the jog wheel'))
           this.clashWarned = true
           buzz([80, 40, 80])
           this.setCombo(0)
@@ -347,7 +348,7 @@ export class Game extends Store<GameState> {
     if (this.dominantSecs > 150 && !blending) {
       energy -= 0.12
       if (!this.boredWarned) {
-        this.emit('info', 'The crowd wants something new', 'Mix in the next track')
+        this.emit('info', t('The crowd wants something new'), t('Mix in the next track'))
         this.boredWarned = true
       }
     }
@@ -365,11 +366,11 @@ export class Game extends Store<GameState> {
       buzz(25)
       if (next >= QUEST.length) {
         this.set({ questStep: -1, questDone: true })
-        this.emit('great', 'MISSION COMPLETE', "You're a DJ now. Keep the crowd going!")
+        this.emit('great', t('MISSION COMPLETE'), t("You're a DJ now. Keep the crowd going!"))
         this.addPoints(2000)
         this.save()
       } else {
-        this.emit('info', `✓ ${QUEST[this.state.questStep].title}`)
+        this.emit('info', `✓ ${t(QUEST[this.state.questStep].title)}`)
         this.set({ questStep: next })
       }
       this.syncCoach()
@@ -391,19 +392,19 @@ export class Game extends Store<GameState> {
     if (clash >= 1.5) return // the trainwreck warning already said it
     if (blend >= PERFECT_BLEND) {
       this.setCombo(this.state.combo + 1)
-      this.emit('great', 'PERFECT TRANSITION', `${blend.toFixed(0)}s seamless blend`)
+      this.emit('great', t('PERFECT TRANSITION'), t('{n}s seamless blend', { n: blend.toFixed(0) }))
       this.addPoints(1500)
       this.set({ energy: Math.min(100, this.state.energy + 12) })
       this.unlock('perfect')
       buzz([30, 30, 30, 30, 120])
     } else if (blend >= SMOOTH_BLEND) {
       this.setCombo(this.state.combo + 1)
-      this.emit('good', 'SMOOTH MIX', 'Blend longer for a perfect transition')
+      this.emit('good', t('SMOOTH MIX'), t('Blend longer for a perfect transition'))
       this.addPoints(600)
       this.set({ energy: Math.min(100, this.state.energy + 6) })
       buzz([30, 40, 60])
     } else {
-      this.emit('info', 'QUICK CUT', 'Try a slow crossfade with SYNC on')
+      this.emit('info', t('QUICK CUT'), t('Try a slow crossfade with SYNC on'))
       this.addPoints(200)
     }
     this.unlock('first-mix')

@@ -1,3 +1,4 @@
+import { useT } from '../i18n'
 import { useEffect, useRef, useState } from 'react'
 import type { Deck, DeckState } from '../audio/deck'
 import { useAnimationFrame } from '../hooks/useEngine'
@@ -12,6 +13,7 @@ const ZOOMS = [2, 4, 8, 16, 32] // seconds visible
 export function WaveView({ deck, state }: { deck: Deck; state: DeckState }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const beatsRef = useRef<HTMLDivElement>(null)
+  const t = useT()
   const [zoom, setZoom] = useState(2) // index into ZOOMS
   const colors = useRef({ accent: '#22d3ee', cue: '#facc15' })
   const drag = useRef<{ x: number; pos: number } | null>(null)
@@ -181,14 +183,14 @@ export function WaveView({ deck, state }: { deck: Deck; state: DeckState }) {
         <i />
       </div>
       <div className="wave-zoom" onPointerDown={(e) => e.stopPropagation()}>
-        <button aria-label="Zoom out" disabled={zoom === ZOOMS.length - 1} onClick={() => setZoom(zoom + 1)}>
+        <button aria-label={t('Zoom out')} disabled={zoom === ZOOMS.length - 1} onClick={() => setZoom(zoom + 1)}>
           −
         </button>
-        <button aria-label="Zoom in" disabled={zoom === 0} onClick={() => setZoom(zoom - 1)}>
+        <button aria-label={t('Zoom in')} disabled={zoom === 0} onClick={() => setZoom(zoom - 1)}>
           +
         </button>
       </div>
-      {!state.detail && state.duration > 0 && <div className="wave-msg">Analyzing…</div>}
+      {!state.detail && state.duration > 0 && <div className="wave-msg">{t('Analyzing…')}</div>}
     </div>
   )
 }

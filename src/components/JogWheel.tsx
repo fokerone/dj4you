@@ -1,3 +1,4 @@
+import { useT } from '../i18n'
 import { useRef } from 'react'
 import type { Deck } from '../audio/deck'
 import { useAnimationFrame } from '../hooks/useEngine'
@@ -31,6 +32,7 @@ interface Drag {
  *  - paused:  turn to scrub through the track precisely
  */
 export function JogWheel({ deck, disabled }: { deck: Deck; disabled: boolean }) {
+  const t = useT()
   const platterRef = useRef<HTMLDivElement>(null)
   const ringRef = useRef<SVGGElement>(null)
   const rootRef = useRef<HTMLDivElement>(null)
@@ -89,8 +91,8 @@ export function JogWheel({ deck, disabled }: { deck: Deck; disabled: boolean }) 
       ref={rootRef}
       className={`jog ${disabled ? 'is-disabled' : ''}`}
       role="slider"
-      aria-label={`Jog wheel deck ${deck.id}`}
-      aria-valuetext="Spin to nudge or scrub"
+      aria-label={t('Jog wheel deck {id}', { id: deck.id })}
+      aria-valuetext={t('Spin to nudge or scrub')}
       onPointerDown={(e) => {
         if (disabled) return
         e.currentTarget.setPointerCapture(e.pointerId)

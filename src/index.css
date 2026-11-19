@@ -70,10 +70,6 @@ input {
   letter-spacing: 0.04em;
 }
 
-.logo span {
-  color: var(--deck-a);
-}
-
 /* ---------- desk ---------- */
 
 .desk {

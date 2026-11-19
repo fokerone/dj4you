@@ -2,9 +2,12 @@ import { useEffect, useRef, useState } from 'react'
 import { ACHIEVEMENTS, QUEST } from '../game/game'
 import { game } from '../game'
 import { useStore } from '../hooks/useEngine'
+import { useT } from '../i18n'
+import { Brand, LangSwitch } from './Brand'
 
 /** Score, combo, crowd energy and DJ level: the game's heads-up display. */
 export function Hud() {
+  const t = useT()
   const s = useStore(game)
   const score = useCountUp(s.score)
   const [open, setOpen] = useState(false)
@@ -12,14 +15,16 @@ export function Hud() {
 
   return (
     <div className="hud">
-      <div className={`hud-energy ${hot ? 'is-hot' : ''}`} title="Crowd energy">
-        <span className="hud-label">Crowd</span>
-        <div className="hud-bar" role="meter" aria-label="Crowd energy" aria-valuenow={Math.round(s.energy)} aria-valuemin={0} aria-valuemax={100}>
+      <Brand className="hud-brand" />
+      <Brand compact className="hud-brand-mark" />
+      <div className={`hud-energy ${hot ? 'is-hot' : ''}`} title={t('Crowd energy')}>
+        <span className="hud-label">{t('Crowd')}</span>
+        <div className="hud-bar" role="meter" aria-label={t('Crowd energy')} aria-valuenow={Math.round(s.energy)} aria-valuemin={0} aria-valuemax={100}>
           <i style={{ transform: `scaleX(${s.energy / 100})` }} />
         </div>
         <b>{Math.round(s.energy)}%</b>
       </div>
-      <div className="hud-score" aria-label="Score">
+      <div className="hud-score" aria-label={t('Score')}>
         <b>{score.toLocaleString()}</b>
         {s.multiplier > 1 && (
           <span key={s.combo} className="hud-combo">
@@ -27,9 +32,9 @@ export function Hud() {
           </span>
         )}
       </div>
-      <button className="hud-level" onClick={() => setOpen(!open)} aria-expanded={open} aria-label={`Level ${s.level}, ${s.levelTitle}. Show achievements`}>
-        <span className="hud-lv">Lv {s.level}</span>
-        <span className="hud-title">{s.levelTitle}</span>
+      <button className="hud-level" onClick={() => setOpen(!open)} aria-expanded={open} aria-label={t('Level {n}, {title}. Show achievements', { n: s.level, title: t(s.levelTitle) })}>
+        <span className="hud-lv">{t('Lv {n}', { n: s.level })}</span>
+        <span className="hud-title">{t(s.levelTitle)}</span>
         <span className="hud-xp">
           <i style={{ transform: `scaleX(${s.levelProgress})` }} />
         </span>
@@ -40,17 +45,22 @@ export function Hud() {
 }
 
 function Trophies({ onClose }: { onClose: () => void }) {
+  const t = useT()
   const s = useStore(game)
   return (
-    <div className="trophies" role="dialog" aria-label="Achievements">
+    <div className="trophies" role="dialog" aria-label={t('Achievements')}>
       <header>
         <b>
-          Achievements {s.achievements.length}/{Object.keys(ACHIEVEMENTS).length}
+          {t('Achievements')} {s.achievements.length}/{Object.keys(ACHIEVEMENTS).length}
         </b>
-        <button className="btn btn-small" onClick={onClose} aria-label="Close achievements">
+        <button className="btn btn-small" onClick={onClose} aria-label={t('Close achievements')}>
           ✕
         </button>
       </header>
+      <div className="trophies-lang">
+        <span>{t('Language')}</span>
+        <LangSwitch />
+      </div>
       <ul>
         {Object.entries(ACHIEVEMENTS).map(([id, a]) => {
           const got = s.achievements.includes(id)
@@ -60,16 +70,16 @@ function Trophies({ onClose }: { onClose: () => void }) {
                 {got ? '★' : '☆'}
               </span>
               <span>
-                <b>{a.title}</b>
-                <small>{a.text}</small>
+                <b>{t(a.title)}</b>
+                <small>{t(a.text)}</small>
               </span>
             </li>
           )
         })}
       </ul>
-      {(s.questDone || s.questStep >= 0) && s.questStep < 0 && (
+      {s.questStep < 0 && (
         <button className="btn btn-small" onClick={() => (game.startQuest(), onClose())}>
-          Replay the first-mix tutorial
+          {t('Replay the first-mix tutorial')}
         </button>
       )}
     </div>
@@ -99,6 +109,7 @@ function useCountUp(target: number): number {
 
 /** Floating "PERFECT TRANSITION" style call-outs and achievement toasts. */
 export function Popups() {
+  const t = useT()
   const { events } = useStore(game)
   const shouts = events.filter((e) => e.kind !== 'achievement' && e.kind !== 'info')
   const infos = events.filter((e) => e.kind === 'info')
@@ -122,7 +133,7 @@ export function Popups() {
               </span>
             )}
             <span>
-              {e.kind === 'achievement' && <small>Achievement unlocked</small>}
+              {e.kind === 'achievement' && <small>{t('Achievement unlocked')}</small>}
               <b>{e.text}</b>
               {e.sub && <small>{e.sub}</small>}
             </span>
@@ -135,6 +146,7 @@ export function Popups() {
 
 /** The guided first-mix quest. */
 export function Coach() {
+  const t = useT()
   const { questStep } = useStore(game)
   const step = QUEST[questStep]
   if (!step) return null
@@ -142,14 +154,14 @@ export function Coach() {
     <div className="coach" role="status">
       <div className="coach-head">
         <span className="coach-count">
-          Mission {questStep + 1}/{QUEST.length}
+          {t('Mission {n}/{total}', { n: questStep + 1, total: QUEST.length })}
         </span>
         <button className="coach-skip" onClick={() => game.skipQuest()}>
-          Skip tutorial
+          {t('Skip tutorial')}
         </button>
       </div>
-      <b>{step.title}</b>
-      <p>{step.text}</p>
+      <b>{t(step.title)}</b>
+      <p>{t(step.text)}</p>
       <div className="coach-dots" aria-hidden>
         {QUEST.map((q, i) => (
           <i key={q.id} className={i < questStep ? 'is-done' : i === questStep ? 'is-now' : ''} />
@@ -161,11 +173,12 @@ export function Coach() {
 
 /** Beat alignment between the decks: centred and green = in the pocket. */
 export function PhaseMeter() {
+  const t = useT()
   const { phaseDiff, inSync, clashing } = useStore(game)
   const known = phaseDiff !== null
   return (
-    <div className={`phase ${known ? '' : 'is-off'} ${inSync ? 'is-sync' : ''} ${clashing && known ? 'is-clash' : ''}`} title="Beat alignment between deck A and B">
-      <span className="phase-label">{known ? (inSync ? 'IN SYNC' : 'ALIGN') : 'PHASE'}</span>
+    <div className={`phase ${known ? '' : 'is-off'} ${inSync ? 'is-sync' : ''} ${clashing && known ? 'is-clash' : ''}`} title={t('Beat alignment between deck A and B')}>
+      <span className="phase-label">{t(known ? (inSync ? 'IN SYNC' : 'ALIGN') : 'PHASE')}</span>
       <div className="phase-track">
         <span className="phase-zone" />
         {known && <span className="phase-needle" style={{ left: `${50 + phaseDiff * 100}%` }} />}

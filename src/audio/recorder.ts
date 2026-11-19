@@ -1,4 +1,5 @@
 import type { Mixer } from './mixer'
+import { t } from '../i18n'
 import { Store } from './store'
 
 export interface RecorderState {
@@ -62,12 +63,12 @@ export class Recorder extends Store<RecorderState> {
         this.set({ recording: false })
         if (blob.size > 0) this.onDone?.(blob, seconds)
       }
-      media.onerror = () => this.set({ recording: false, error: 'Recording stopped unexpectedly.' })
+      media.onerror = () => this.set({ recording: false, error: t('Recording stopped unexpectedly.') })
       media.start(1000) // 1 s chunks: a crash loses at most a second
       this.media = media
       this.set({ recording: true, startedAt: performance.now(), error: null })
     } catch {
-      this.set({ recording: false, error: "This browser can't record audio." })
+      this.set({ recording: false, error: t("This browser can't record audio.") })
     }
   }
 

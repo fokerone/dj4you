@@ -1,3 +1,4 @@
+import { useT } from '../i18n'
 import { useRef, useState } from 'react'
 import { type Deck, type DeckState, HOT_CUES } from '../audio/deck'
 import { ECHO_BEATS, echoLabel } from '../audio/fx'
@@ -12,20 +13,21 @@ const LONG_PRESS_MS = 500
 
 /** Performance pads: one row of 4, switchable between hot cues, loops and FX. */
 export function PadRow({ deck, state, ready }: { deck: Deck; state: DeckState; ready: boolean }) {
+  const t = useT()
   const [mode, setMode] = useState<Mode>('cue')
   const nextMode = MODES[(MODES.indexOf(mode) + 1) % MODES.length]
 
   return (
     <div className="pads" data-mode={mode}>
-      <div className="pad-modes" role="tablist" aria-label="Pad mode">
+      <div className="pad-modes" role="tablist" aria-label={t('Pad mode')}>
         {MODES.map((m) => (
           <button key={m} role="tab" aria-selected={mode === m} className="pad-mode" onClick={() => setMode(m)}>
-            {MODE_LABEL[m]}
+            {t(MODE_LABEL[m])}
           </button>
         ))}
       </div>
-      <button className="pad-mode-cycle" onClick={() => setMode(nextMode)} aria-label={`Pad mode: ${MODE_LABEL[mode]}. Switch to ${MODE_LABEL[nextMode]}`}>
-        {MODE_LABEL[mode]}
+      <button className="pad-mode-cycle" onClick={() => setMode(nextMode)} aria-label={t('Pad mode: {mode}. Switch to {next}', { mode: t(MODE_LABEL[mode]), next: t(MODE_LABEL[nextMode]) })}>
+        {t(MODE_LABEL[mode])}
       </button>
 
       <div className="pad-grid">
@@ -44,7 +46,7 @@ export function PadRow({ deck, state, ready }: { deck: Deck; state: DeckState; r
               onClick={() => deck.toggleLoop(beats)}
             >
               {beats}
-              <small>{beats === 1 ? 'beat' : 'beats'}</small>
+              <small>{t(beats === 1 ? 'beat' : 'beats')}</small>
             </button>
           ))}
 
@@ -55,26 +57,26 @@ export function PadRow({ deck, state, ready }: { deck: Deck; state: DeckState; r
               aria-pressed={state.echoOn}
               onClick={() => deck.toggleEcho()}
             >
-              Echo
+              {t('Echo')}
             </button>
             <button
               className="pad pad-fx-time"
-              aria-label={`Echo time ${echoLabel(state.echoBeats)} beat`}
+              aria-label={t('Echo time {t} beat', { t: echoLabel(state.echoBeats) })}
               onClick={() => deck.setEchoBeats(ECHO_BEATS[(ECHO_BEATS.indexOf(state.echoBeats) + 1) % ECHO_BEATS.length])}
             >
               {echoLabel(state.echoBeats)}
-              <small>beat</small>
+              <small>{t('beat')}</small>
             </button>
             <button
               className={`pad pad-fx ${state.reverbOn ? 'is-on' : ''}`}
               aria-pressed={state.reverbOn}
               onClick={() => deck.toggleReverb()}
             >
-              Reverb
+              {t('Reverb')}
             </button>
             <div className="pad pad-knob">
               <Knob
-                label="Wet"
+                label={t('Wet')}
                 className="knob-small"
                 min={0}
                 max={1}
@@ -92,6 +94,7 @@ export function PadRow({ deck, state, ready }: { deck: Deck; state: DeckState; r
 }
 
 function HotCuePad({ index, deck, position, disabled }: { index: number; deck: Deck; position: number | null; disabled: boolean }) {
+  const t = useT()
   const timer = useRef<number | undefined>(undefined)
   const longPressed = useRef(false)
   const set = position !== null
@@ -102,7 +105,7 @@ function HotCuePad({ index, deck, position, disabled }: { index: number; deck: D
       className={`pad pad-hotcue ${set ? 'is-set' : ''}`}
       style={{ '--pad-color': HOT_CUE_COLORS[index] } as React.CSSProperties}
       disabled={disabled}
-      aria-label={set ? `Hot cue ${index + 1}: jump. Hold to clear` : `Set hot cue ${index + 1}`}
+      aria-label={set ? t('Hot cue {n}: jump. Hold to clear', { n: index + 1 }) : t('Set hot cue {n}', { n: index + 1 })}
       onPointerDown={() => {
         longPressed.current = false
         if (!set) return
@@ -122,7 +125,7 @@ function HotCuePad({ index, deck, position, disabled }: { index: number; deck: D
       }}
     >
       {index + 1}
-      <small>{set ? formatShort(position) : 'set'}</small>
+      <small>{set ? formatShort(position) : t('set')}</small>
     </button>
   )
 }

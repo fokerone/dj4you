@@ -1,3 +1,4 @@
+import { useT } from '../i18n'
 import type { Deck } from '../audio/deck'
 import type { Mixer } from '../audio/mixer'
 import { useStore } from '../hooks/useEngine'
@@ -6,16 +7,18 @@ import { Knob } from './Knob'
 import { Meter } from './Meter'
 
 function ChannelStrip({ deck }: { deck: Deck }) {
+  const t = useT()
   const { id, volume, eq, filter } = useStore(deck)
   return (
     <div className={`strip strip-${id.toLowerCase()}`}>
       <div className="strip-head">{id}</div>
       <div className="strip-knobs">
-        <Knob label="Hi" min={-1} max={1} center={0} value={eq.high} onChange={(v) => deck.setEq('high', v)} />
-        <Knob label="Mid" min={-1} max={1} center={0} value={eq.mid} onChange={(v) => deck.setEq('mid', v)} />
-        <Knob label="Low" min={-1} max={1} center={0} value={eq.low} onChange={(v) => deck.setEq('low', v)} />
+        <Knob label={t('Hi')} shortLabel={t('HI')} min={-1} max={1} center={0} value={eq.high} onChange={(v) => deck.setEq('high', v)} />
+        <Knob label={t('Mid')} shortLabel={t('MID')} min={-1} max={1} center={0} value={eq.mid} onChange={(v) => deck.setEq('mid', v)} />
+        <Knob label={t('Low')} shortLabel={t('LOW')} min={-1} max={1} center={0} value={eq.low} onChange={(v) => deck.setEq('low', v)} />
         <Knob
-          label="Filter"
+          label={t('Filter')}
+          shortLabel={t('FLT')}
           className="knob-filter"
           min={-1}
           max={1}
@@ -26,9 +29,9 @@ function ChannelStrip({ deck }: { deck: Deck }) {
         />
       </div>
       <div className="strip-body">
-        <Meter analyser={deck.meter} label={`Deck ${id} level`} />
+        <Meter analyser={deck.meter} label={t('Deck {id} level', { id })} />
         <Fader
-          label={`Channel ${id}`}
+          label={t('Channel {id}', { id })}
           hideLabel
           className="fader-channel"
           min={0}
@@ -44,17 +47,18 @@ function ChannelStrip({ deck }: { deck: Deck }) {
 }
 
 export function MixerView({ mixer, decks, rec }: { mixer: Mixer; decks: readonly [Deck, Deck]; rec?: React.ReactNode }) {
+  const t = useT()
   const { master } = useStore(mixer)
   return (
-    <section className="mixer" aria-label="Mixer">
+    <section className="mixer" aria-label={t('Mixer')}>
       <ChannelStrip deck={decks[0]} />
       <div className="strip strip-master">
-        <div className="strip-head">Master</div>
+        <div className="strip-head">{t('Master')}</div>
         {rec}
         <div className="strip-body">
-          <Meter analyser={mixer.masterMeter} label="Master level" />
+          <Meter analyser={mixer.masterMeter} label={t('Master level')} />
           <Fader
-            label="Master"
+            label={t('Master')}
             hideLabel
             className="fader-master"
             min={0}
@@ -72,6 +76,7 @@ export function MixerView({ mixer, decks, rec }: { mixer: Mixer; decks: readonly
 }
 
 export function Crossfader({ mixer }: { mixer: Mixer }) {
+  const t = useT()
   const { crossfader, curve } = useStore(mixer)
   return (
     <div className="xfader">
@@ -79,7 +84,7 @@ export function Crossfader({ mixer }: { mixer: Mixer }) {
       <div className="xfader-track">
         <input
           type="range"
-          aria-label="Crossfader"
+          aria-label={t('Crossfader')}
           min={0}
           max={1}
           step={0.005}
@@ -91,10 +96,10 @@ export function Crossfader({ mixer }: { mixer: Mixer }) {
       <span className="xfader-side xfader-b">B</span>
       <button
         className="btn btn-small xfader-curve"
-        title="Crossfader curve"
+        title={t('Crossfader curve')}
         onClick={() => mixer.setCurve(curve === 'smooth' ? 'cut' : 'smooth')}
       >
-        {curve === 'smooth' ? 'Blend' : 'Cut'}
+        {t(curve === 'smooth' ? 'Blend' : 'Cut')}
       </button>
     </div>
   )

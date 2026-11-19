@@ -2,6 +2,7 @@ import Peer, { type DataConnection, type MediaConnection } from 'peerjs'
 import type { AudioEngine } from '../audio/engine'
 import { crossfaderGains } from '../audio/mixer'
 import { Store } from '../audio/store'
+import { t } from '../i18n'
 import { LOBBY_URL, MAX_LISTENERS, peerOptions } from './config'
 import type { DjMessage, LiveMeta } from './protocol'
 import { musicSdp, raiseBitrate } from './sdp'
@@ -138,8 +139,8 @@ export class Broadcaster extends Store<BroadcastState> {
         id: null,
         error:
           type === 'browser-incompatible'
-            ? "This browser can't stream live."
-            : "Couldn't reach the live server. Check your connection and try again.",
+            ? t("This browser can't stream live.")
+            : t("Couldn't reach the live server. Check your connection and try again."),
       })
     })
   }

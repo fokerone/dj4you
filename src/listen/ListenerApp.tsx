@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { useAnimationFrame, useStore } from '../hooks/useEngine'
 import { LOBBY_URL } from '../live/config'
 import { LiveListener } from '../live/listener'
+import { Brand, LangSwitch } from '../components/Brand'
+import { useT } from '../i18n'
 
 const listener = new LiveListener()
 // Handy for debugging from the browser console in dev builds.
@@ -10,16 +12,18 @@ const appUrl = `${location.origin}${location.pathname}`
 
 /** Entry for listeners: `?listen=<id>` plays a set, `?live` shows the lobby. */
 export default function ListenerApp() {
+  const t = useT()
   const params = new URLSearchParams(location.search)
   const id = params.get('listen')
   return (
     <div className="listen">
       <header className="listen-top">
         <a className="logo" href={appUrl}>
-          DJ<span>4</span>YOU
+          <Brand />
         </a>
+        <LangSwitch />
         <a className="btn btn-small" href={appUrl}>
-          Open the DJ desk
+          {t('Open the DJ desk')}
         </a>
       </header>
       <main className="listen-main">{id ? <Player id={id} /> : <Lobby />}</main>
@@ -28,6 +32,7 @@ export default function ListenerApp() {
 }
 
 function Player({ id }: { id: string }) {
+  const t = useT()
   const { status, meta, stream } = useStore(listener)
   const audioRef = useRef<HTMLAudioElement>(null)
   const [blocked, setBlocked] = useState(false)
@@ -46,52 +51,52 @@ function Player({ id }: { id: string }) {
     if (audioRef.current) audioRef.current.volume = volume
   }, [volume])
 
-  const title = meta?.title || (meta?.dj ? `${meta.dj} live` : 'Live DJ set')
+  const title = meta?.title || (meta?.dj ? t('{dj} live', { dj: meta.dj }) : t('Live DJ set'))
 
   return (
     <section className="player" aria-live="polite">
       <div className={`player-badge ${status === 'live' ? 'is-on' : ''}`}>
-        <span className="live-dot" aria-hidden /> {status === 'live' ? 'LIVE' : 'DJ4YOU LIVE'}
+        <span className="live-dot" aria-hidden /> {status === 'live' ? t('LIVE') : t('DJ4YOU LIVE')}
       </div>
       <h1 className="player-title">{title}</h1>
-      {meta?.dj && <p className="player-dj">by {meta.dj}</p>}
+      {meta?.dj && <p className="player-dj">{t('by {dj}', { dj: meta.dj })}</p>}
 
       <Visualizer stream={stream} />
 
       {status === 'idle' && (
         <button className="btn btn-listen" onClick={() => listener.connect(id)}>
-          ▶ Tap to listen
+          {t('▶ Tap to listen')}
         </button>
       )}
-      {status === 'connecting' && <p className="player-msg">Connecting to the DJ…</p>}
+      {status === 'connecting' && <p className="player-msg">{t('Connecting to the DJ…')}</p>}
       {status === 'live' && blocked && (
         <button className="btn btn-listen" onClick={() => void audioRef.current?.play().then(() => setBlocked(false))}>
-          ▶ Start audio
+          {t('▶ Start audio')}
         </button>
       )}
 
       {status === 'live' && meta && (
         <div className="player-info">
           <div className="player-now">
-            <span>Now playing</span>
-            <b>{meta.nowPlaying ?? 'Getting the next track ready…'}</b>
+            <span>{t('Now playing')}</span>
+            <b>{meta.nowPlaying ?? t('Getting the next track ready…')}</b>
           </div>
           <ul className="player-decks">
             {meta.decks.map((d) => (
               <li key={d.id} className={`player-deck deck-${d.id.toLowerCase()}`}>
                 <span className="deck-badge">{d.id}</span>
-                <span className="player-deck-track">{d.track ?? 'Empty'}</span>
+                <span className="player-deck-track">{d.track ?? t('Empty')}</span>
                 <span className="dim">{d.bpm ? `${d.bpm.toFixed(1)} BPM` : ''}</span>
-                {d.playing && <span className="tab-dot is-on" aria-label="playing" />}
+                {d.playing && <span className="tab-dot is-on" aria-label={t('playing')} />}
               </li>
             ))}
           </ul>
           <div className="player-foot">
             <span className="dim">
-              {meta.listeners} {meta.listeners === 1 ? 'listener' : 'listeners'} · <Since startedAt={meta.startedAt} />
+              {meta.listeners} {t(meta.listeners === 1 ? 'listener' : 'listeners')} · <Since startedAt={meta.startedAt} />
             </span>
             <label className="player-vol">
-              <span className="dim">Volume</span>
+              <span className="dim">{t('Volume')}</span>
               <input id="listen-volume" type="range" min={0} max={1} step={0.01} value={volume} onChange={(e) => setVolume(Number(e.target.value))} />
             </label>
           </div>
@@ -101,24 +106,24 @@ function Player({ id }: { id: string }) {
       {(status === 'ended' || status === 'notfound' || status === 'full' || status === 'error') && (
         <div className="player-over">
           <p className="player-msg">
-            {status === 'ended' && 'This set has ended. Thanks for listening!'}
-            {status === 'notfound' && "This set isn't live right now. It may have ended, or the link is incomplete."}
-            {status === 'full' && 'This set is full right now. Try again in a bit.'}
-            {status === 'error' && "Couldn't connect to the live server. Check your connection and try again."}
+            {status === 'ended' && t('This set has ended. Thanks for listening!')}
+            {status === 'notfound' && t("This set isn't live right now. It may have ended, or the link is incomplete.")}
+            {status === 'full' && t('This set is full right now. Try again in a bit.')}
+            {status === 'error' && t("Couldn't reach the live server. Check your connection and try again.")}
           </p>
           <div className="player-actions">
             {status !== 'ended' && (
               <button className="btn" onClick={() => listener.connect(id)}>
-                Try again
+                {t('Try again')}
               </button>
             )}
             {LOBBY_URL && (
               <a className="btn" href="?live">
-                See who's live
+                {t("See who's live")}
               </a>
             )}
             <a className="btn btn-primary" href={appUrl}>
-              Start your own set
+              {t('Start your own set')}
             </a>
           </div>
         </div>
@@ -129,11 +134,12 @@ function Player({ id }: { id: string }) {
 }
 
 function Since({ startedAt }: { startedAt: number }) {
+  const t = useT()
   const ref = useRef<HTMLSpanElement>(null)
   useAnimationFrame(() => {
     if (!ref.current) return
     const s = Math.max(0, Math.floor((Date.now() - startedAt) / 1000))
-    ref.current.textContent = `live for ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
+    ref.current.textContent = t('live for {time}', { time: `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` })
   })
   return <span ref={ref} />
 }
@@ -194,6 +200,7 @@ interface LobbySet {
 }
 
 function Lobby() {
+  const t = useT()
   const [sets, setSets] = useState<LobbySet[] | null>(null)
   const [failed, setFailed] = useState(false)
 
@@ -222,12 +229,12 @@ function Lobby() {
 
   return (
     <section className="lobby">
-      <h1>Live now</h1>
-      {!LOBBY_URL && <p className="player-msg">The public lobby isn't set up on this site yet. Ask the DJ for their listen link.</p>}
-      {LOBBY_URL && failed && <p className="player-msg">Couldn't load live sets. Retrying…</p>}
+      <h1>{t('Live now')}</h1>
+      {!LOBBY_URL && <p className="player-msg">{t("The public lobby isn't set up on this site yet. Ask the DJ for their listen link.")}</p>}
+      {LOBBY_URL && failed && <p className="player-msg">{t("Couldn't load live sets. Retrying…")}</p>}
       {LOBBY_URL && sets?.length === 0 && (
         <p className="player-msg">
-          Nobody is live right now. <a href={appUrl}>Be the first DJ</a>.
+          {t('Nobody is live right now.')} <a href={appUrl}>{t('Be the first DJ')}</a>.
         </p>
       )}
       <ul className="lobby-list">
@@ -236,12 +243,12 @@ function Lobby() {
             <a className="lobby-card" href={`?listen=${encodeURIComponent(s.id)}`}>
               <span className="live-dot" aria-hidden />
               <span className="lobby-info">
-                <b>{s.title || `${s.dj} live`}</b>
+                <b>{s.title || t('{dj} live', { dj: s.dj })}</b>
                 <span className="dim">
-                  {s.dj} · {s.listeners} {s.listeners === 1 ? 'listener' : 'listeners'}
+                  {s.dj} · {s.listeners} {t(s.listeners === 1 ? 'listener' : 'listeners')}
                 </span>
               </span>
-              <span className="btn btn-small">Listen</span>
+              <span className="btn btn-small">{t('Listen')}</span>
             </a>
           </li>
         ))}
