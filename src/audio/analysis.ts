@@ -1,0 +1,182 @@
+/**
+ * Track analysis: waveform peaks + tempo/beat-grid detection.
+ * Pure functions (no DOM / Web Audio), so it runs in a Web Worker
+ * or — as a fallback — on the main thread.
+ */
+
+export interface Analysis {
+  /** Whole-track overview peaks, 0..1 */
+  peaks: Float32Array<ArrayBuffer>
+  /** Detailed peaks for the scrolling waveform, `detailRate` bins per second */
+  detail: Float32Array<ArrayBuffer>
+  detailRate: number
+  /** Detected tempo, or null if no clear beat was found */
+  bpm: number | null
+  /** Time of the first beat-grid line in seconds (0 <= firstBeat < 60/bpm) */
+  firstBeat: number
+}
+
+export const DETAIL_RATE = 150
+const OVERVIEW_BINS = 1200
+/** Onset envelope frame rate */
+const FPS = 200
+const MIN_BPM = 70
+const MAX_BPM = 180
+const MIN_CLARITY = 2
+/** Mean log-energy rise on the beat; tiny for steady tones and noise. */
+const MIN_STRENGTH = 0.15
+const DEBUG = false
+
+export function analyze(mono: Float32Array, sampleRate: number): Analysis {
+  const peaks = normalize(binPeaks(mono, OVERVIEW_BINS))
+  const detailBins = Math.max(1, Math.ceil((mono.length / sampleRate) * DETAIL_RATE))
+  const detail = normalize(binPeaks(mono, detailBins))
+  const { bpm, firstBeat } = detectTempo(mono, sampleRate)
+  return { peaks, detail, detailRate: DETAIL_RATE, bpm, firstBeat }
+}
+
+// ---------------------------------------------------------------- peaks
+
+function binPeaks(data: Float32Array, bins: number): Float32Array<ArrayBuffer> {
+  const out = new Float32Array(bins)
+  const step = data.length / bins
+  for (let b = 0; b < bins; b++) {
+    const start = Math.floor(b * step)
+    const end = Math.min(data.length, Math.floor((b + 1) * step))
+    // Stride through long bins; an exact max is not needed for display.
+    const stride = Math.max(1, Math.floor((end - start) / 128))
+    let max = 0
+    for (let i = start; i < end; i += stride) {
+      const v = Math.abs(data[i])
+      if (v > max) max = v
+    }
+    out[b] = max
+  }
+  return out
+}
+
+function normalize(a: Float32Array<ArrayBuffer>): Float32Array<ArrayBuffer> {
+  let max = 0
+  for (const v of a) if (v > max) max = v
+  if (max > 0) for (let i = 0; i < a.length; i++) a[i] /= max
+  return a
+}
+
+// ---------------------------------------------------------------- tempo
+
+/**
+ * 1. Onset envelope: positive changes in log energy, from a low-passed (kick)
+ *    band plus the full band, at 200 frames/s, with the local average removed.
+ * 2. Comb search: for every candidate tempo, find the grid phase whose beat
+ *    positions collect the most onset energy. Coarse pass over 70–180 BPM,
+ *    then a fine pass around the winner.
+ */
+export function detectTempo(mono: Float32Array, sampleRate: number): { bpm: number | null; firstBeat: number } {
+  const onset = onsetEnvelope(mono, sampleRate)
+  if (onset.length < FPS * 4) return { bpm: null, firstBeat: 0 } // < 4 s of audio
+
+  // Coarse pass.
+  let best = { bpm: 0, phase: 0, score: -Infinity }
+  const raw: number[] = []
+  for (let bpm = MIN_BPM; bpm <= MAX_BPM; bpm += 0.25) {
+    const r = bestPhase(onset, bpm, 1)
+    raw.push(r.score)
+    const score = r.score * tempoPrior(bpm)
+    if (score > best.score) best = { bpm, phase: r.phase, score }
+  }
+  // Reject audio without a clear pulse: a real beat makes one tempo (family)
+  // stand far above the typical candidate; noise and pads stay flat.
+  raw.sort((x, y) => x - y)
+  const median = raw[raw.length >> 1]
+  const clarity = median > 0 ? raw[raw.length - 1] / median : 0
+  if (DEBUG) console.log('clarity', clarity.toFixed(2))
+  if (!(clarity >= MIN_CLARITY)) return { bpm: null, firstBeat: 0 }
+  // Fine pass.
+  let fine = { bpm: best.bpm, phase: best.phase, score: -Infinity }
+  for (let bpm = best.bpm - 0.3; bpm <= best.bpm + 0.3; bpm += 0.01) {
+    const r = bestPhase(onset, bpm, 0.25)
+    if (r.score > fine.score) fine = { bpm, phase: r.phase, score: r.score }
+  }
+  // Most produced music sits on an integer tempo: snap if it scores about as well.
+  const rounded = Math.round(fine.bpm)
+  const snapped = bestPhase(onset, rounded, 0.25)
+  if (snapped.score >= fine.score * 0.98) fine = { bpm: rounded, phase: snapped.phase, score: snapped.score }
+
+  if (DEBUG) console.log('beat strength', fine.score.toFixed(3))
+  if (fine.score < MIN_STRENGTH) return { bpm: null, firstBeat: 0 }
+
+  return { bpm: Math.round(fine.bpm * 100) / 100, firstBeat: fine.phase / FPS }
+}
+
+function onsetEnvelope(x: Float32Array, sr: number): Float32Array {
+  const hop = sr / FPS
+  const frames = Math.floor(x.length / hop)
+  const low = new Float32Array(frames)
+  const full = new Float32Array(frames)
+  // Two cascaded one-pole low-passes at ~150 Hz isolate the kick.
+  const a = Math.exp((-2 * Math.PI * 150) / sr)
+  let y1 = 0
+  let y2 = 0
+  let i = 0
+  for (let f = 0; f < frames; f++) {
+    const end = Math.floor((f + 1) * hop)
+    let el = 0
+    let ef = 0
+    for (; i < end; i++) {
+      const s = x[i]
+      y1 = (1 - a) * s + a * y1
+      y2 = (1 - a) * y1 + a * y2
+      el += y2 * y2
+      ef += s * s
+    }
+    low[f] = Math.log(1e-9 + el)
+    full[f] = Math.log(1e-9 + ef)
+  }
+  const onset = new Float32Array(frames)
+  for (let f = 1; f < frames; f++) {
+    onset[f] = Math.max(0, low[f] - low[f - 1]) + 0.5 * Math.max(0, full[f] - full[f - 1])
+  }
+  onset[0] = onset[1]
+  // Subtract a 0.5 s moving average and half-wave rectify: keeps the peaks.
+  const win = Math.round(FPS * 0.25)
+  const out = new Float32Array(frames)
+  let sum = 0
+  for (let f = 0; f < Math.min(frames, win); f++) sum += onset[f]
+  for (let f = 0; f < frames; f++) {
+    if (f + win < frames) sum += onset[f + win]
+    if (f - win - 1 >= 0) sum -= onset[f - win - 1]
+    const n = Math.min(frames - 1, f + win) - Math.max(0, f - win) + 1
+    out[f] = Math.max(0, onset[f] - sum / n)
+  }
+  return out
+}
+
+/** Mean onset value at beat positions, maximised over grid phase. */
+function bestPhase(onset: Float32Array, bpm: number, phaseStep: number): { phase: number; score: number } {
+  const period = (FPS * 60) / bpm
+  let bestScore = -Infinity
+  let bestPh = 0
+  for (let phase = 0; phase < period; phase += phaseStep) {
+    let sum = 0
+    let n = 0
+    for (let pos = phase; pos < onset.length - 1; pos += period) {
+      const i = Math.floor(pos)
+      const frac = pos - i
+      // Interpolated value, with some tolerance for ±1 frame of timing jitter.
+      sum += Math.max(onset[i] * (1 - frac) + onset[i + 1] * frac, 0.7 * Math.max(onset[i], onset[i + 1]))
+      n++
+    }
+    const score = n ? sum / n : 0
+    if (score > bestScore) {
+      bestScore = score
+      bestPh = phase
+    }
+  }
+  return { phase: bestPh, score: bestScore }
+}
+
+/** Gentle preference for typical dance tempos (log-Gaussian around 125 BPM). */
+function tempoPrior(bpm: number): number {
+  const octaves = Math.log2(bpm / 125)
+  return Math.exp(-0.5 * (octaves / 0.9) ** 2)
+}
