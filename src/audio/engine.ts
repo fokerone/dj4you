@@ -1,5 +1,6 @@
 import { Deck } from './deck'
 import { Mixer } from './mixer'
+import { Broadcaster } from '../live/broadcaster'
 import { Recorder } from './recorder'
 
 /**
@@ -11,6 +12,7 @@ export class AudioEngine {
   readonly mixer: Mixer
   readonly decks: readonly [Deck, Deck]
   readonly recorder: Recorder
+  readonly live: Broadcaster
 
   constructor() {
     // iOS: play through the silent switch like a media app (Safari 16.4+).
@@ -22,6 +24,7 @@ export class AudioEngine {
     this.decks = [new Deck(this, 'A'), new Deck(this, 'B')]
     for (const deck of this.decks) this.mixer.connectDeck(deck)
     this.recorder = new Recorder(this.ctx, this.mixer)
+    this.live = new Broadcaster(this)
 
     this.installUnlock()
   }

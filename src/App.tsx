@@ -3,6 +3,7 @@ import type { Deck } from './audio/deck'
 import { engine } from './audio/engine'
 import { DeckView } from './components/DeckView'
 import { LibrarySheet } from './components/LibrarySheet'
+import { LiveButton, LiveSheet } from './components/LiveSheet'
 import { Crossfader, MixerView } from './components/MixerView'
 import { RecButton } from './components/RecButton'
 import { useStore } from './hooks/useEngine'
@@ -19,6 +20,9 @@ type Tab = 'A' | 'mixer' | 'B'
 export default function App() {
   const [tab, setTab] = useState<Tab>('A')
   const [libraryOpen, setLibraryOpen] = useState(false)
+  const [liveOpen, setLiveOpen] = useState(false)
+  const openLive = useCallback(() => setLiveOpen(true), [])
+  const closeLive = useCallback(() => setLiveOpen(false), [])
   const [toast, setToast] = useState<string | null>(null)
   const [deckA, deckB] = engine.decks
   const openLibrary = useCallback(() => setLibraryOpen(true), [])
@@ -45,6 +49,7 @@ export default function App() {
           Mixer
         </button>
         <TabButton deck={deckB} active={tab === 'B'} onClick={() => setTab('B')} />
+        <LiveButton className="live-in-tabs" onOpen={openLive} />
       </nav>
 
       <main className="desk" data-tab={tab}>
@@ -52,7 +57,12 @@ export default function App() {
           <DeckView deck={deckA} other={deckB} onOpenLibrary={openLibrary} />
         </div>
         <div className="panel panel-mixer">
-          <MixerView mixer={engine.mixer} decks={engine.decks} rec={<RecButton className="rec-in-mixer" onSaved={onRecSaved} />} />
+          <MixerView mixer={engine.mixer} decks={engine.decks} rec={
+              <>
+                <RecButton className="rec-in-mixer" onSaved={onRecSaved} />
+                <LiveButton className="live-in-mixer" onOpen={openLive} />
+              </>
+            } />
         </div>
         <div className="panel panel-b">
           <DeckView deck={deckB} other={deckA} onOpenLibrary={openLibrary} />
@@ -62,6 +72,8 @@ export default function App() {
           <RecButton className="rec-in-dock" onSaved={onRecSaved} />
         </div>
       </main>
+
+      <LiveSheet open={liveOpen} onClose={closeLive} />
 
       <LibrarySheet
         open={libraryOpen}
@@ -88,7 +100,8 @@ function TabButton({ deck, active, onClick }: { deck: Deck; active: boolean; onC
   const { id, playing } = useStore(deck)
   return (
     <button role="tab" aria-selected={active} className={`tab tab-${id.toLowerCase()}`} onClick={onClick}>
-      Deck {id}
+      <span className="tab-word">Deck </span>
+      {id}
       <span className={`tab-dot ${playing ? 'is-on' : ''}`} aria-label={playing ? 'playing' : undefined} />
     </button>
   )

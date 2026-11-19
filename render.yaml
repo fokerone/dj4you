@@ -1,0 +1,10 @@
+# One-click deploy of the DJ4YOU live server on Render (free plan).
+services:
+  - type: web
+    name: dj4you-live
+    runtime: node
+    rootDir: server
+    plan: free
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /health
