@@ -3079,3 +3079,31 @@ body[data-coach='load-b'] .lib-row .btn-to-b {
     display: none;
   }
 }
+
+/* ---------- SYNC lock: filled when the deck follows the other ---------- */
+
+.btn-sync {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.btn-sync.is-locked {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #07080c;
+  box-shadow:
+    0 0 16px color-mix(in srgb, var(--accent) 55%, transparent),
+    0 3px 0 rgb(0 0 0 / 0.35);
+}
+
+.sync-lock {
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}

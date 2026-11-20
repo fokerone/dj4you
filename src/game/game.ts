@@ -195,8 +195,8 @@ export class Coach extends Store<CoachState> {
     const h = this.state.hint
     if (!h?.syncDeck) return
     const [a, b] = this.engine.decks
-    if (h.syncDeck === 'A') a.syncTo(b)
-    else b.syncTo(a)
+    if (h.syncDeck === 'A') a.engageSync(b)
+    else b.engageSync(a)
     this.set({ hint: null })
   }
 

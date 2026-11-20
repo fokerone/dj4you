@@ -34,8 +34,8 @@ export function useShortcuts(onToggleHelp: () => void): void {
         if (!held.has(k)) (k === 'w' ? a : b).cueDown()
         held.add(k)
       } else if (k in hot && !e.repeat) hot[k][0].hotCue(hot[k][1])
-      else if (k === 'z') a.syncTo(b)
-      else if (k === 'm') b.syncTo(a)
+      else if (k === 'z') a.engageSync(b)
+      else if (k === 'm') b.engageSync(a)
       else if (k === 'arrowleft') mx.setCrossfader(e.shiftKey ? 0 : mx.getSnapshot().crossfader - 0.05)
       else if (k === 'arrowright') mx.setCrossfader(e.shiftKey ? 1 : mx.getSnapshot().crossfader + 0.05)
       else if (k === ' ') {

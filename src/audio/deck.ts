@@ -16,6 +16,8 @@ import { Store } from './store'
 
 export type DeckId = 'A' | 'B'
 
+export type SyncResult = 'ok' | 'too-far' | 'no-bpm'
+
 export const HOT_CUES = 4
 
 /** Reported once a loaded track has been analysed. */
@@ -68,6 +70,8 @@ export interface DeckState {
   /** Hot cue positions (seconds) or null for empty slots */
   readonly hotCues: readonly (number | null)[]
   readonly loop: Loop | null
+  /** SYNC lock: this deck follows the other deck's tempo */
+  readonly syncLock: boolean
 }
 
 /**
@@ -131,6 +135,7 @@ export class Deck extends Store<DeckState> {
       fxAmount: 0.5,
       hotCues: Array<number | null>(HOT_CUES).fill(null),
       loop: null,
+      syncLock: false,
     })
     this.id = id
     this.engine = engine
@@ -282,6 +287,7 @@ export class Deck extends Store<DeckState> {
       firstBeat: 0,
       hotCues: Array<number | null>(HOT_CUES).fill(null),
       loop: null,
+      syncLock: false,
     })
     return token
   }
@@ -377,7 +383,13 @@ export class Deck extends Store<DeckState> {
     this.set({ volume })
   }
 
+  /** Tempo fader moved by the user: this also releases a SYNC lock. */
   setPitch(percent: number): void {
+    if (this.state.syncLock) this.set({ syncLock: false })
+    this.applyPitch(percent)
+  }
+
+  private applyPitch(percent: number): void {
     const pitch = clamp(percent, -this.state.pitchRange, this.state.pitchRange)
     this.reanchor()
     this.set({ pitch })
@@ -387,7 +399,7 @@ export class Deck extends Store<DeckState> {
 
   setPitchRange(range: 8 | 16): void {
     this.set({ pitchRange: range })
-    this.setPitch(this.state.pitch) // re-clamp
+    this.applyPitch(this.state.pitch) // re-clamp
   }
 
   /** Temporary tempo bend from the jog wheel (-0.5..0.5); 0 to release. */
@@ -404,27 +416,88 @@ export class Deck extends Store<DeckState> {
    * the beats. Handles half/double tempo (e.g. 87 ↔ 174). Returns false if the
    * tempo is out of reach even at ±16%.
    */
-  syncTo(other: Deck): boolean {
-    const target = other.effectiveBpm
+  syncTo(other: Deck): SyncResult {
     const own = this.state.bpm
-    if (target === null || own === null) return false
-    // Choose the closest of target, double and half.
-    const options = [target, target * 2, target / 2].map((t) => (t / own - 1) * 100)
-    const pitch = options.reduce((a, b) => (Math.abs(b) < Math.abs(a) ? b : a))
-    if (Math.abs(pitch) > 16) return false
-    if (Math.abs(pitch) > this.state.pitchRange) this.setPitchRange(16)
-    this.setPitch(pitch)
+    if (other.effectiveBpm === null || own === null) return 'no-bpm'
+    const match = this.tempoMatch(other)
+    if (match === null) return 'too-far'
+    const { pitch, ratio } = match
+    if (Math.abs(pitch) > this.state.pitchRange) this.set({ pitchRange: 16 })
+    this.applyPitch(pitch)
 
     if (this.state.playing && other.state.playing) {
       const mine = this.beatPhase()
-      const theirs = other.beatPhase()
+      let theirs = other.beatPhase()
       if (mine !== null && theirs !== null) {
+        // Double / half time: express the other deck's position in our beats.
+        if (ratio === 2) theirs = (theirs * 2) % 1
+        if (ratio === 0.5) {
+          const a = theirs / 2
+          theirs = Math.abs(((a - mine + 1.5) % 1) - 0.5) <= Math.abs(((a + 0.5 - mine + 1.5) % 1) - 0.5) ? a : a + 0.5
+        }
         let d = theirs - mine
         d -= Math.round(d) // shortest way: -0.5..0.5 beats
-        this.seek(this.position + d * (60 / own))
+        let t = this.position + d * (60 / own)
+        // Stay inside an active loop instead of jumping out of it.
+        const loop = this.state.loop
+        if (loop) {
+          const len = loop.end - loop.start
+          t = loop.start + ((((t - loop.start) % len) + len) % len)
+        }
+        this.seek(t)
       }
     }
-    return true
+    return 'ok'
+  }
+
+  /**
+   * SYNC button: match `other` and stay locked to its tempo. Only one deck
+   * follows at a time, so the other deck's lock is released.
+   */
+  engageSync(other: Deck): SyncResult {
+    const r = this.syncTo(other)
+    if (r === 'ok') {
+      other.setSyncLock(false)
+      this.set({ syncLock: true })
+    }
+    return r
+  }
+
+  setSyncLock(on: boolean): void {
+    if (this.state.syncLock !== on) this.set({ syncLock: on })
+  }
+
+  /** Called when the other deck changes: keep following its tempo. */
+  followTempo(other: Deck): void {
+    if (!this.state.syncLock || this.state.bpm === null) return
+    if (other.effectiveBpm === null) return
+    const pitch = this.pitchToMatch(other)
+    if (pitch === null) {
+      this.set({ syncLock: false })
+      return
+    }
+    if (Math.abs(pitch - this.state.pitch) < 0.001) return
+    if (Math.abs(pitch) > this.state.pitchRange) this.set({ pitchRange: 16 })
+    this.applyPitch(pitch)
+  }
+
+  /** Tempo change (%) that matches `other` (also half / double time), or null if beyond ±16%. */
+  private pitchToMatch(other: Deck): number | null {
+    return this.tempoMatch(other)?.pitch ?? null
+  }
+
+  /** Best tempo match: pitch % and our beats per other-deck beat (1, 2 or 0.5). */
+  private tempoMatch(other: Deck): { pitch: number; ratio: 1 | 2 | 0.5 } | null {
+    const target = other.effectiveBpm
+    const own = this.state.bpm
+    if (target === null || own === null) return null
+    const ratios = [1, 2, 0.5] as const
+    let best: { pitch: number; ratio: 1 | 2 | 0.5 } | null = null
+    for (const ratio of ratios) {
+      const pitch = ((target * ratio) / own - 1) * 100
+      if (!best || Math.abs(pitch) < Math.abs(best.pitch)) best = { pitch, ratio }
+    }
+    return best && Math.abs(best.pitch) <= 16 ? best : null
   }
 
   // ---- EQ / filter / FX ----

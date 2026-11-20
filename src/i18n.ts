@@ -382,6 +382,12 @@ const ES: Record<string, string> = {
   'Choose an MP3, M4A, WAV, AIFF, FLAC or OGG file.': 'Elige un archivo MP3, M4A, WAV, AIFF, FLAC u OGG.',
   '{n} file(s) skipped': '{n} archivo(s) omitido(s)',
   'Only audio files can be added.': 'Solo se pueden añadir archivos de audio.',
+  // sync lock
+  'Synced to deck {id}. Tap to release': 'Sincronizado con el deck {id}. Toca para soltar',
+  'Deck {id} synced': 'Deck {id} sincronizado',
+  'It follows deck {other}’s tempo until you tap SYNC again or move its tempo fader.': 'Sigue el tempo del deck {other} hasta que vuelvas a tocar SYNC o muevas su fader de tempo.',
+  'Tempos too far apart to sync': 'Tempos demasiado distintos para sincronizar',
+  '{a} and {b} BPM differ by more than 16%. Pick tracks with closer tempos.': '{a} y {b} BPM se diferencian en más de un 16 %. Elige temas con tempos más parecidos.',
 }
 
 function detect(): Lang {

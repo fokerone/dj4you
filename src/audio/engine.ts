@@ -23,6 +23,10 @@ export class AudioEngine {
     this.mixer = new Mixer(this.ctx)
     this.decks = [new Deck(this, 'A'), new Deck(this, 'B')]
     for (const deck of this.decks) this.mixer.connectDeck(deck)
+    // SYNC lock: a locked deck follows the other deck's tempo changes.
+    const [a, b] = this.decks
+    a.subscribe(() => b.followTempo(a))
+    b.subscribe(() => a.followTempo(b))
     this.recorder = new Recorder(this.ctx, this.mixer)
     this.live = new Broadcaster(this)
 

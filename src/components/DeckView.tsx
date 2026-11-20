@@ -108,11 +108,37 @@ export function DeckView({ deck, other, onOpenLibrary }: { deck: Deck; other: De
       <div className="deck-body">
         <div className="transport">
           <button
-            className={`btn btn-sync ${inSync ? 'is-on' : ''}`}
+            className={`btn btn-sync ${state.syncLock ? 'is-locked' : inSync ? 'is-on' : ''}`}
             disabled={!canSync}
-            title={canSync ? t('Match tempo and beats to deck {id}', { id: other.id }) : t('Needs a BPM on both decks')}
-            onClick={() => deck.syncTo(other)}
+            aria-pressed={state.syncLock}
+            title={
+              state.syncLock
+                ? t('Synced to deck {id}. Tap to release', { id: other.id })
+                : canSync
+                  ? t('Match tempo and beats to deck {id}', { id: other.id })
+                  : t('Needs a BPM on both decks')
+            }
+            onClick={() => {
+              if (state.syncLock) {
+                deck.setSyncLock(false)
+                return
+              }
+              const r = deck.engageSync(other)
+              if (r === 'ok') coach.notify('success', t('Deck {id} synced', { id: state.id }), t('It follows deck {other}\u2019s tempo until you tap SYNC again or move its tempo fader.', { other: other.id }))
+              else if (r === 'too-far')
+                coach.notify(
+                  'info',
+                  t('Tempos too far apart to sync'),
+                  t('{a} and {b} BPM differ by more than 16%. Pick tracks with closer tempos.', { a: Math.round(state.bpm ?? 0), b: Math.round(otherBpm ?? 0) }),
+                )
+              else coach.notify('info', t('Needs a BPM on both decks'))
+            }}
           >
+            {state.syncLock && (
+              <svg className="sync-lock" viewBox="0 0 24 24" aria-hidden>
+                <path d="M7 11V8a5 5 0 0 1 10 0v3M6 11h12v9H6z" />
+              </svg>
+            )}
             SYNC
           </button>
           <button
