@@ -3,6 +3,7 @@ import { DEMOS, renderDemo } from '../audio/demo'
 import { Store } from '../audio/store'
 import { locale, t } from '../i18n'
 import { idb, RECORDINGS, TRACKS } from './idb'
+import { jamendoAudioUrl, type JamendoTrack } from './jamendo'
 
 export interface TrackMeta {
   readonly id: string
@@ -106,6 +107,12 @@ export class Library extends Store<LibraryState> {
     await loading
   }
 
+  /** Stream a Jamendo track onto a deck, credited as "Title — Artist". */
+  loadJamendo(track: JamendoTrack, deck: Deck): Promise<void> {
+    remember(deck, { type: 'jamendo', track })
+    return deck.loadUrl(jamendoAudioUrl(track.id), `${track.name} — ${track.artist}`)
+  }
+
   async loadTrack(id: string, deck: Deck): Promise<void> {
     const rec = await idb.get<TrackRecord>(TRACKS, id).catch(() => undefined)
     if (!rec) return
@@ -136,7 +143,10 @@ export class Library extends Store<LibraryState> {
       decks.map(async (deck) => {
         const src = saved[deck.id]
         if (!src || deck.loaded) return
-        if (src.type === 'demo' && DEMOS[src.index]) {
+        if (src.type === 'jamendo' && src.track?.id) {
+          any = true
+          await this.loadJamendo(src.track, deck)
+        } else if (src.type === 'demo' && DEMOS[src.index]) {
           any = true
           await this.loadDemo(src.index, deck)
         } else if (src.type === 'track') {
@@ -213,7 +223,7 @@ export class Library extends Store<LibraryState> {
   }
 }
 
-type DeckSource = { type: 'track'; id: string } | { type: 'demo'; index: number }
+type DeckSource = { type: 'track'; id: string } | { type: 'demo'; index: number } | { type: 'jamendo'; track: JamendoTrack }
 const DECKS_KEY = 'dj4you.decks'
 
 /** Remember what's on each deck so the next visit opens where you left off. */

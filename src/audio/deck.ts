@@ -253,6 +253,23 @@ export class Deck extends Store<DeckState> {
     }
   }
 
+  /** Download a track (e.g. from Jamendo), decode it and load it. */
+  async loadUrl(url: string, name: string, onAnalyzed?: (a: Analyzed) => void): Promise<void> {
+    const token = this.beginLoad(name)
+    try {
+      const res = await fetch(url)
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const data = await res.arrayBuffer()
+      if (token !== this.loadToken) return
+      const buffer = await this.engine.ctx.decodeAudioData(data)
+      if (token !== this.loadToken) return
+      this.finishLoad(buffer, token, onAnalyzed)
+    } catch {
+      if (token !== this.loadToken) return
+      this.set({ loading: false, trackName: null, error: t('Couldn\'t download "{name}". Check your connection.', { name }) })
+    }
+  }
+
   /** Load an already decoded / generated buffer (e.g. a demo track). */
   async loadGenerated(name: string, make: () => Promise<AudioBuffer>): Promise<void> {
     const token = this.beginLoad(name)

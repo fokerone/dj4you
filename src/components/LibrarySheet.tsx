@@ -9,6 +9,7 @@ import { hostDownloads, saveFile, type SaveOutcome } from '../library/saveFile'
 import { install } from '../pwa'
 import { audioAccept, isAudioFile } from '../library/audioFiles'
 import { coach } from '../game'
+import { JamendoBrowser } from './JamendoBrowser'
 
 interface Props {
   open: boolean
@@ -24,6 +25,7 @@ export function LibrarySheet({ open, onClose, onLoaded }: Props) {
   const inst = useStore(install)
   const fileRef = useRef<HTMLInputElement>(null)
   const closeRef = useRef<HTMLButtonElement>(null)
+  const [view, setView] = useState<'mine' | 'free'>('mine')
 
   useEffect(() => {
     if (!open) return
@@ -68,64 +70,77 @@ export function LibrarySheet({ open, onClose, onLoaded }: Props) {
           />
         </header>
 
+        <div className="lib-tabs" role="tablist" aria-label={t('Library')}>
+          <button role="tab" aria-selected={view === 'mine'} className="lib-tab" onClick={() => setView('mine')}>
+            {t('My music')}
+          </button>
+          <button role="tab" aria-selected={view === 'free'} className="lib-tab" onClick={() => setView('free')}>
+            {t('Free music')} <span className="lib-tab-badge">Jamendo</span>
+          </button>
+        </div>
+
+        {view === 'free' ? (
+          <JamendoBrowser onPick={(track, deck) => sendTo(deck, (d) => library.loadJamendo(track, d))} />
+        ) : (
         <div className="sheet-body">
-          <section className="lib-section">
-            <h3>
-              {t('Your tracks')} <span className="dim">{lib.tracks.length || ''}</span>
-            </h3>
-            {lib.unavailable && (
-              <p className="lib-note">{t("This browser is blocking storage, so tracks play but won't be kept after you close the page.")}</p>
-            )}
-            {!lib.ready ? (
-              <p className="lib-empty">{t('Loading your library…')}</p>
-            ) : lib.tracks.length === 0 ? (
-              <p className="lib-empty">
-                {t("Tracks you load are kept here on this device, so they're ready next time. Nothing is uploaded. Tap Add tracks or load a file onto a deck.")}
-              </p>
-            ) : (
+            <section className="lib-section">
+              <h3>
+                {t('Your tracks')} <span className="dim">{lib.tracks.length || ''}</span>
+              </h3>
+              {lib.unavailable && (
+                <p className="lib-note">{t("This browser is blocking storage, so tracks play but won't be kept after you close the page.")}</p>
+              )}
+              {!lib.ready ? (
+                <p className="lib-empty">{t('Loading your library…')}</p>
+              ) : lib.tracks.length === 0 ? (
+                <p className="lib-empty">
+                  {t("Tracks you load are kept here on this device, so they're ready next time. Nothing is uploaded. Tap Add tracks or load a file onto a deck.")}
+                </p>
+              ) : (
+                <ul className="lib-list">
+                  {lib.tracks.map((t) => (
+                    <TrackRow
+                      key={t.id}
+                      title={t.name}
+                      meta={trackMeta(t)}
+                      onDeck={(deck) => sendTo(deck, (d) => library.loadTrack(t.id, d))}
+                      onDelete={() => void library.removeTrack(t.id)}
+                    />
+                  ))}
+                </ul>
+              )}
+            </section>
+  
+            <section className="lib-section">
+              <h3>{t('Starter pack')}</h3>
               <ul className="lib-list">
-                {lib.tracks.map((t) => (
+                {DEMOS.map((d, i) => (
                   <TrackRow
-                    key={t.id}
-                    title={t.name}
-                    meta={trackMeta(t)}
-                    onDeck={(deck) => sendTo(deck, (d) => library.loadTrack(t.id, d))}
-                    onDelete={() => void library.removeTrack(t.id)}
+                    key={d.name}
+                    title={d.name}
+                    meta={t('{genre} · {bpm} BPM · {dur}', { genre: d.genre, bpm: d.bpm, dur: formatDuration(demoDuration(d.bpm)) })}
+                    onDeck={(deck) => sendTo(deck, (dk) => library.loadDemo(i, dk))}
                   />
                 ))}
               </ul>
-            )}
-          </section>
-
-          <section className="lib-section">
-            <h3>{t('Starter pack')}</h3>
-            <ul className="lib-list">
-              {DEMOS.map((d, i) => (
-                <TrackRow
-                  key={d.name}
-                  title={d.name}
-                  meta={t('{genre} · {bpm} BPM · {dur}', { genre: d.genre, bpm: d.bpm, dur: formatDuration(demoDuration(d.bpm)) })}
-                  onDeck={(deck) => sendTo(deck, (dk) => library.loadDemo(i, dk))}
-                />
-              ))}
-            </ul>
-          </section>
-
-          <section className="lib-section">
-            <h3>
-              {t('Recordings')} <span className="dim">{lib.recordings.length || ''}</span>
-            </h3>
-            {lib.recordings.length === 0 ? (
-              <p className="lib-empty">{t('Press REC next to the crossfader to record your mix. Recordings are saved here.')}</p>
-            ) : (
-              <ul className="lib-list">
-                {lib.recordings.map((r) => (
-                  <RecordingRow key={r.id} rec={r} embedded={inst.embedded} />
-                ))}
-              </ul>
-            )}
-          </section>
-        </div>
+            </section>
+  
+            <section className="lib-section">
+              <h3>
+                {t('Recordings')} <span className="dim">{lib.recordings.length || ''}</span>
+              </h3>
+              {lib.recordings.length === 0 ? (
+                <p className="lib-empty">{t('Press REC next to the crossfader to record your mix. Recordings are saved here.')}</p>
+              ) : (
+                <ul className="lib-list">
+                  {lib.recordings.map((r) => (
+                    <RecordingRow key={r.id} rec={r} embedded={inst.embedded} />
+                  ))}
+                </ul>
+              )}
+            </section>
+          </div>
+        )}
 
         <footer className="sheet-foot">
           {lib.usage && (

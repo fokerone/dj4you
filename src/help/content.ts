@@ -102,6 +102,7 @@ const ES: HelpSection[] = [
     title: 'Biblioteca',
     items: [
       { id: 'yours', name: 'Tus temas', what: 'Todo lo que cargas se guarda en este dispositivo (nada se sube a internet) y aparece aquí la próxima vez, con su BPM y duración. Añadir temas permite elegir varios archivos a la vez. Borrar pide un segundo toque para confirmar.' },
+      { id: 'jamendo', name: 'Música libre (Jamendo)', what: 'Busca entre miles de temas con licencia Creative Commons por artista, título o género y cárgalos en A o B. Solo se muestran licencias que permiten remezclar; cada tema indica su artista y su licencia (NC = sin uso comercial, SA = comparte tu mezcla con la misma licencia). Se reproducen desde internet y vuelven a cargarse al regresar.', tip: 'Necesita conexión. No está disponible en la vista previa, solo en la web.' },
       { id: 'starter', name: 'Pack de inicio', what: 'Siete beats creados en tu navegador, de estilos y tempos distintos: house (120–128), techno (132), hip-hop (90) y drum & bass (174).', tip: 'Para practicar SYNC combina temas de tempo parecido, por ejemplo Sunrise (122) y Night Drive (126).' },
       { id: 'recs', name: 'Grabaciones', what: 'Tus mezclas grabadas: escúchalas (▶), descárgalas (⤓) o bórralas.' },
       { id: 'resume', name: 'Al volver', what: 'Los temas que tenías en cada deck se vuelven a cargar en pausa.' },
@@ -206,6 +207,7 @@ const EN: HelpSection[] = [
     title: 'Library',
     items: [
       { id: 'yours', name: 'Your tracks', what: 'Everything you load is kept on this device (nothing is uploaded) and shows up here next time, with its BPM and length. Add tracks lets you pick several files at once. Delete asks for a second tap to confirm.' },
+      { id: 'jamendo', name: 'Free music (Jamendo)', what: 'Search thousands of Creative Commons tracks by artist, title or genre and load them on A or B. Only licences that allow remixing are shown; each track shows its artist and licence (NC = no commercial use, SA = share your mix under the same licence). They stream from the internet and are loaded again when you come back.', tip: 'Needs a connection. Not available in the preview, only on the website.' },
       { id: 'starter', name: 'Starter pack', what: 'Seven beats made in your browser, in different styles and tempos: house (120–128), techno (132), hip-hop (90) and drum & bass (174).', tip: 'To practise SYNC, combine tracks with similar tempos, e.g. Sunrise (122) and Night Drive (126).' },
       { id: 'recs', name: 'Recordings', what: 'Your recorded mixes: listen (▶), download (⤓) or delete them.' },
       { id: 'resume', name: 'When you come back', what: 'The tracks you had on each deck are loaded again, paused.' },
