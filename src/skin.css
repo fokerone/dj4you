@@ -3783,3 +3783,16 @@ button.deck-bpm:active:not(:disabled) {
 .sheet {
   background: #11141d;
 }
+
+/* Portrait phones: the sticky crossfader dock floats over the deck while it
+   scrolls, so its phase row needs a solid backing to stay readable. */
+@media (orientation: portrait) and (max-width: 899px) {
+  .panel-xfader .phase {
+    background: #0e1119;
+    border: 1px solid rgb(255 255 255 / 0.06);
+    border-radius: 10px;
+    padding: 4px 10px;
+    min-height: 26px;
+    box-shadow: 0 -8px 20px var(--bg);
+  }
+}

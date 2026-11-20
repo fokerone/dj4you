@@ -1,74 +1,150 @@
-# DJ4YOU
+<div align="center">
 
-A mobile-friendly DJ desk in the browser. Anyone with a phone or PC and a web browser can mix.
+# 🎧 DJ4YOU
 
-- Two decks with waveform, BPM detection, beat grid, SYNC and jog wheels
-- Mixer with 3-band EQ, filter, channel faders, crossfader (blend / cut) and meters
-- Headphone cue (split mode: left = headphones, right = speakers with a Y-splitter cable)
-- Hot cues, beat-synced loops, echo and reverb
-- Free music: search and load Creative Commons tracks from Jamendo (only licences that allow remixing; artist and licence shown). Set `VITE_JAMENDO_CLIENT_ID` to use your own client id
-- On-device library (IndexedDB) with a built-in starter pack of 7 generated demo beats (house, techno, hip-hop 90, drum & bass 174); decks are restored on your next visit
-- Record your mix and get a session recap (setlist, transitions, achievements, share); installable PWA that works offline
-- A friendly coach: guided first-mix tutorial, gentle feedback on transitions, one-tap fixes when beats clash, and 13 achievements
-- Spanish and English UI, with a searchable help page that explains every control (open with ?, from the Menu, or with the #ayuda / #help link)
-- Go live: stream your mix to up to 20 listeners over WebRTC (stereo Opus, 192 kb/s), with a share link, QR code and a public "Live now" lobby
+**Una consola de DJ en el navegador. Cualquiera con un celular o una PC puede mezclar.**
 
-## Develop
+🎛️ Orquestado por **Foker** ([fokerone](https://github.com/fokerone)) · 🤖 Desarrollado por **[Claude Code](https://claude.com/claude-code)**
+
+[**▶ Abrir DJ4YOU**](https://fokerone.github.io/dj4you/) · [Ayuda dentro de la app](https://fokerone.github.io/dj4you/#ayuda)
+
+<img src="docs/desktop.png" alt="DJ4YOU en el escritorio: dos decks sincronizados y el mezclador" width="860">
+
+</div>
+
+---
+
+## Qué es
+
+DJ4YOU es una consola de DJ completa que funciona en el navegador, sin instalar nada y sin cuenta.
+Dos decks, un mezclador, efectos, auriculares para preescuchar, grabación y transmisión en vivo,
+con una interfaz pensada primero para el celular. Se puede instalar como app (PWA) y funciona sin conexión.
+
+La app está en **español e inglés** y trae una página de ayuda que explica cada control.
+
+<p align="center"><img src="docs/phone.png" alt="DJ4YOU en un celular" width="300"></p>
+
+## Funciones
+
+### Decks
+- **Forma de onda** con zoom (de 2 a 32 segundos) y colores por banda, más la **vista general** del tema para saltar a cualquier punto.
+- **Detección de BPM** y grilla de beats automáticas (en un worker, sin trabar la interfaz). Si un tema no tiene un beat claro, **TAP**: tocás la caja de BPM al ritmo y lo fijás a mano.
+- **SYNC con bloqueo**: iguala el tempo y alinea los beats (también a doble o medio tempo) y sigue al otro deck mientras esté activo.
+- **Fader de tempo** con rangos **±8 / ±16 / ±30 / ±50 %**: SYNC llega tan lejos como el rango que elijas.
+- **Jog** para empujar o frenar el tema, **CUE** estilo club, **4 hot cues**, **loops** de 1, 2, 4 u 8 tiempos.
+- **Efectos**: eco a tempo (1/4 a 1 tiempo) y reverb, con knob de cantidad.
+- **Aviso de fin de tema**: los últimos segundos se marcan en rojo y el deck parpadea antes de que termine (15, 30 o 60 s, o desactivado).
+
+### Mezclador
+- Ecualizador de **3 bandas** y **filtro** de un solo knob por canal.
+- Faders de canal, **master** con limitador y medidores.
+- **Crossfader** con curva suave o de corte.
+- **Medidor de fase** que dice en palabras si los beats van juntos o chocan.
+- **Auriculares** (modo dividido con cable Y: izquierda auriculares, derecha parlantes) para escuchar el próximo tema antes de que suene.
+
+### Música
+- **Mis temas**: lo que cargás queda guardado en el dispositivo (IndexedDB); no se sube nada.
+- **Música libre de [Jamendo](https://www.jamendo.com)**: miles de temas Creative Commons buscables por artista, título o estilo. Solo se muestran licencias que permiten remezclar, y cada tema indica artista y licencia. Jamendo no da el BPM: la lista muestra su velocidad aproximada y, cuando cargás un tema, el BPM que midió DJ4YOU.
+- **Favoritos ★** de cualquier origen, arriba de todo en la biblioteca.
+- **Pack de inicio**: 7 beats generados en el navegador (house, techno, hip-hop a 90, drum & bass a 174).
+- Al volver, los decks se recargan donde los dejaste y la biblioteca recuerda la pestaña y el estilo elegidos.
+
+### Grabar y salir en vivo
+- **REC** graba exactamente lo que sale por el master; al terminar hay un **resumen de la sesión** (setlist, transiciones, logros) para compartir.
+- **LIVE** transmite la mezcla en estéreo a **hasta 20 oyentes** por WebRTC, con enlace, código QR y una sala pública "En vivo ahora".
+
+### Para aprender
+- Tutorial guiado para la primera mezcla, consejos cuando los beats chocan (con un botón para arreglarlo) y **13 logros**.
+- Página de **ayuda** con buscador que ilumina cada control en pantalla (tecla `?`, desde el menú o con el enlace `#ayuda`).
+
+## Atajos de teclado
+
+| Acción | Deck A | Deck B |
+| --- | --- | --- |
+| Play / pausa | `Q` | `P` |
+| CUE (mantener para escuchar) | `W` | `O` |
+| SYNC | `Z` | `M` |
+| Hot cues | `1` – `4` | `7` `8` `9` `0` |
+| Play del deck que más se oye | `Espacio` | |
+| Crossfader | `←` / `→` (con `Shift`: hasta el extremo) | |
+| Ayuda | `?` | |
+
+## Desarrollo
+
+Requiere Node 20 o superior.
 
 ```bash
 npm install
 npm run dev
 ```
 
-## Build
-
 ```bash
-npm run build           # static site in dist/ (PWA)
-npm run build:artifact  # single self-contained HTML file in dist-artifact/
+npm run build           # sitio estático en dist/ (PWA)
+npm run build:artifact  # un único HTML autocontenido en dist-artifact/
+npm run lint
 ```
 
-## Layout
+### Variables de entorno (opcionales)
 
-- `src/audio/` – the audio engine (plain TypeScript, Web Audio API): decks, mixer, FX, analysis worker, recorder
-- `src/library/` – on-device track/recording storage
-- `src/components/` – React UI
-- `public/` – PWA manifest, service worker, icons
-- `src/live/` – live streaming (PeerJS / WebRTC): broadcaster, listener, protocol
-- `src/listen/` – the listener and lobby pages (`?listen=<id>`, `?live`)
-- `server/` – optional signaling + lobby server
+| Variable | Para qué |
+| --- | --- |
+| `VITE_JAMENDO_CLIENT_ID` | Tu propio client id de la API de Jamendo (hay uno por defecto). |
+| `VITE_SIGNAL_URL` | URL del servidor de señalización propio (activa la sala "En vivo ahora"). |
 
-## How live streaming works
+### Estructura
 
-The DJ's master output (the same tap the recorder uses) is sent peer-to-peer
-from the DJ's browser to each listener; no audio goes through a server. A
-signaling server only introduces the browsers to each other.
+```
+src/
+  audio/       motor de audio (TypeScript + Web Audio API): decks, mezclador, FX,
+               análisis de BPM en un worker, grabador, beats de demo
+  components/  interfaz en React
+  library/     biblioteca en el dispositivo, Jamendo, favoritos y preferencias
+  live/        transmisión en vivo (PeerJS / WebRTC)
+  listen/      páginas del oyente y de la sala (?listen=<id>, ?live)
+  game/        tutorial, consejos y logros
+  help/        contenido de la página de ayuda (ES / EN)
+  i18n.ts      traducciones
+public/        manifest, service worker e íconos de la PWA
+server/        servidor opcional de señalización + sala
+```
 
-- **Without a server of your own** the free public PeerJS server is used: Go Live
-  and share links / QR codes work, the public lobby is off.
-- **With the DJ4YOU server** (`server/`) you also get the **Live now** lobby.
-  Set `VITE_SIGNAL_URL` at build time to its URL.
+El motor de audio vive fuera de React: cada deck, el mezclador y la biblioteca son *stores* simples que los componentes leen con `useSyncExternalStore`.
 
-Because every listener gets their own stream from the DJ, the DJ's upload speed
-sets the limit (capped at 20 listeners, about 200 kb/s each).
+## Cómo funciona el vivo
 
-## Deploy
+La salida master del DJ (la misma que usa el grabador) viaja **de navegador a navegador** hasta cada oyente; el audio no pasa por ningún servidor. Un servidor de señalización solo presenta a los navegadores entre sí.
 
-### Web app → GitHub Pages
+- **Sin servidor propio** se usa el servidor público de PeerJS: LIVE, el enlace y el QR funcionan; la sala pública queda desactivada.
+- **Con el servidor de DJ4YOU** (`server/`) también aparece la sala **En vivo ahora**. Definí `VITE_SIGNAL_URL` al compilar.
 
-1. Push to `main`.
-2. In the repository: **Settings → Pages → Build and deployment → Source: GitHub Actions**.
-3. The `Deploy to GitHub Pages` workflow builds and publishes `dist/`. The site is
-   at `https://<user>.github.io/<repo>/`.
+Como cada oyente recibe su propio stream, la velocidad de subida del DJ pone el límite (máximo 20 oyentes, unos 200 kb/s cada uno).
 
-### Live server (optional, enables the lobby)
+## Publicar
 
-Deploy `server/` anywhere that runs Node 20+ and supports WebSockets, e.g.
-[Render](https://render.com) using `render.yaml` (New → Blueprint), or the
-`server/Dockerfile` on Fly.io / Railway. Then add a repository variable
-`SIGNAL_URL` (e.g. `https://dj4you-live.onrender.com`) under **Settings → Secrets
-and variables → Actions → Variables** and re-run the deploy workflow.
+### App web → GitHub Pages
+
+1. Hacer push a `main`.
+2. En el repositorio: **Settings → Pages → Build and deployment → Source: GitHub Actions**.
+3. El workflow `Deploy to GitHub Pages` compila y publica `dist/` en `https://<usuario>.github.io/<repo>/`.
+
+### Servidor del vivo (opcional, activa la sala)
+
+`server/` corre en cualquier lugar con Node 20+ y WebSockets, por ejemplo [Render](https://render.com) con `render.yaml` (New → Blueprint), o con `server/Dockerfile` en Fly.io o Railway. Después agregá la variable de repositorio `SIGNAL_URL` (por ejemplo `https://dj4you-live.onrender.com`) en **Settings → Secrets and variables → Actions → Variables** y volvé a correr el deploy.
 
 ```bash
 cd server && npm install && npm start   # local: http://localhost:9000
+```
+
+```bash
 VITE_SIGNAL_URL=http://localhost:9000 npm run dev
 ```
+
+## Créditos
+
+- Idea, dirección y pruebas: **Foker** ([fokerone](https://github.com/fokerone)).
+- Desarrollo: **[Claude Code](https://claude.com/claude-code)**, de Anthropic.
+- Música libre: [Jamendo](https://www.jamendo.com) y sus artistas, bajo licencias Creative Commons. Respetá la licencia de cada tema (NC = sin uso comercial, SA = compartí tu mezcla con la misma licencia).
+
+---
+
+<sub>English: DJ4YOU is a mobile-first DJ desk that runs in the browser — two decks with BPM detection and SYNC, a 3-band EQ mixer with filter and FX, headphone cue, hot cues and loops, free Creative Commons music from Jamendo, recording and live streaming to up to 20 listeners over WebRTC. The app itself is available in English and Spanish.</sub>
