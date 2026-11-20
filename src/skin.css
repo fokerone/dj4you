@@ -2930,3 +2930,99 @@ body[data-coach='load-b'] .lib-row .btn-to-b {
 .summary-actions .btn-primary-solid {
   grid-column: 1 / -1;
 }
+
+/* ================= fader visibility (all browsers) ================= */
+
+/* The groove: darker than the panel, with a light rim so the path reads. */
+.fader input[type='range']::-webkit-slider-runnable-track,
+.xfader input[type='range']::-webkit-slider-runnable-track {
+  background: rgb(0 0 0 / 0.6);
+  border: 1px solid rgb(255 255 255 / 0.24);
+  box-shadow: inset 0 1px 3px rgb(0 0 0 / 0.7);
+}
+
+.fader input[type='range']::-moz-range-track,
+.xfader input[type='range']::-moz-range-track {
+  background: rgb(0 0 0 / 0.6);
+  border: 1px solid rgb(255 255 255 / 0.24);
+  box-shadow: inset 0 1px 3px rgb(0 0 0 / 0.7);
+  border-radius: 4px;
+}
+
+/* Firefox draws vertical ranges with the track's own width/height: a fixed
+   8×8 track rendered as a dot. Give vertical tracks their full length. */
+.fader:not(.fader-horizontal) input[type='range']::-moz-range-track {
+  width: 8px;
+  height: 100%;
+}
+
+.fader-horizontal input[type='range']::-moz-range-track,
+.xfader input[type='range']::-moz-range-track {
+  width: 100%;
+  height: 8px;
+}
+
+.fader:not(.fader-horizontal) input[type='range']::-moz-range-thumb {
+  width: 40px;
+  height: 22px;
+  border: none;
+  border-radius: 4px;
+  background: linear-gradient(#f3f6fb, #a7b0c3);
+  box-shadow: 0 2px 6px rgb(0 0 0 / 0.5);
+}
+
+.fader-pitch input[type='range']::-moz-range-thumb {
+  background: linear-gradient(var(--accent), color-mix(in srgb, var(--accent) 60%, #000));
+}
+
+/* Scale marks on both sides of vertical faders (every 10%). */
+.fader:not(.fader-horizontal) .fader-rail::before {
+  content: '';
+  position: absolute;
+  top: 11px;
+  bottom: 11px;
+  left: 50%;
+  width: 46px;
+  transform: translateX(-50%);
+  background: repeating-linear-gradient(to top, rgb(255 255 255 / 0.32) 0 1px, transparent 1px 10%);
+  -webkit-mask: linear-gradient(to right, #000 0 9px, transparent 9px calc(100% - 9px), #000 calc(100% - 9px));
+  mask: linear-gradient(to right, #000 0 9px, transparent 9px calc(100% - 9px), #000 calc(100% - 9px));
+  pointer-events: none;
+}
+
+/* Zero line on the tempo fader: a clear centre mark across the groove. */
+.fader-pitch .fader-rail::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 52px;
+  height: 2px;
+  transform: translate(-50%, -50%);
+  border-radius: 1px;
+  background: rgb(255 255 255 / 0.75);
+  box-shadow: 0 0 6px rgb(255 255 255 / 0.35);
+  pointer-events: none;
+}
+
+.fader-rail input[type='range'] {
+  position: relative;
+  z-index: 1;
+}
+
+/* Crossfader: centre detent mark more visible too. */
+.xfader-track::before {
+  background: rgb(255 255 255 / 0.55);
+  width: 2px;
+  top: 8px;
+  bottom: 8px;
+}
+
+.phase-track {
+  background: rgb(0 0 0 / 0.55);
+  border: 1px solid rgb(255 255 255 / 0.2);
+}
+
+.phase.is-off .phase-track {
+  opacity: 0.85;
+}
