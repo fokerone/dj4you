@@ -102,6 +102,7 @@ export class Library extends Store<LibraryState> {
     })
     ;[id] = await this.addFiles([file])
     if (id && pending) void this.updateTrack(id, pending)
+    if (id) remember(deck, { type: 'track', id })
     await loading
   }
 
@@ -109,12 +110,44 @@ export class Library extends Store<LibraryState> {
     const rec = await idb.get<TrackRecord>(TRACKS, id).catch(() => undefined)
     if (!rec) return
     const file = new File([rec.blob], rec.name, { type: rec.blob.type })
+    remember(deck, { type: 'track', id })
     await deck.load(file, (a) => void this.updateTrack(id, a), rec.name)
   }
 
   loadDemo(index: number, deck: Deck): Promise<void> {
     const spec = DEMOS[index]
+    remember(deck, { type: 'demo', index })
     return deck.loadGenerated(spec.name, () => renderDemo(spec))
+  }
+
+  /**
+   * Put back what was on the decks last time (paused). Returns true if
+   * anything was restored. Missing tracks are skipped quietly.
+   */
+  async restoreDecks(decks: readonly Deck[]): Promise<boolean> {
+    let saved: Partial<Record<string, DeckSource>> = {}
+    try {
+      saved = JSON.parse(localStorage.getItem(DECKS_KEY) ?? '{}') as Partial<Record<string, DeckSource>>
+    } catch {
+      return false
+    }
+    let any = false
+    await Promise.all(
+      decks.map(async (deck) => {
+        const src = saved[deck.id]
+        if (!src || deck.loaded) return
+        if (src.type === 'demo' && DEMOS[src.index]) {
+          any = true
+          await this.loadDemo(src.index, deck)
+        } else if (src.type === 'track') {
+          const exists = await idb.get<TrackRecord>(TRACKS, src.id).catch(() => undefined)
+          if (!exists) return
+          any = true
+          await this.loadTrack(src.id, deck)
+        }
+      }),
+    )
+    return any
   }
 
   async removeTrack(id: string): Promise<void> {
@@ -177,6 +210,20 @@ export class Library extends Store<LibraryState> {
     } catch {
       /* not supported */
     }
+  }
+}
+
+type DeckSource = { type: 'track'; id: string } | { type: 'demo'; index: number }
+const DECKS_KEY = 'dj4you.decks'
+
+/** Remember what's on each deck so the next visit opens where you left off. */
+function remember(deck: Deck, src: DeckSource): void {
+  try {
+    const saved = JSON.parse(localStorage.getItem(DECKS_KEY) ?? '{}') as Record<string, DeckSource>
+    saved[deck.id] = src
+    localStorage.setItem(DECKS_KEY, JSON.stringify(saved))
+  } catch {
+    /* not kept */
   }
 }
 

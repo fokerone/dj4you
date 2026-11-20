@@ -129,7 +129,7 @@ export function PhoneBar({ onMenu }: { onMenu: () => void }) {
 }
 
 /** Settings + progress: language, achievements, tutorial, shortcuts. */
-export function MenuSheet({ open, onClose, onWelcome }: { open: boolean; onClose: () => void; onWelcome: () => void }) {
+export function MenuSheet({ open, onClose, onWelcome, onHeadphones }: { open: boolean; onClose: () => void; onWelcome: () => void; onHeadphones: () => void }) {
   const t = useT()
   const s = useStore(coach)
   const [confirmReset, setConfirmReset] = useState(false)
@@ -165,6 +165,17 @@ export function MenuSheet({ open, onClose, onWelcome }: { open: boolean; onClose
             <span>{t('Language')}</span>
             <LangSwitch />
           </section>
+
+          <button
+            className="btn menu-row menu-link"
+            onClick={() => {
+              onClose()
+              onHeadphones()
+            }}
+          >
+            <span>{t('Headphones')}</span>
+            <span className="dim">{t('Preview the next track')} →</span>
+          </button>
 
           <section className="menu-stats" aria-label={t('This session')}>
             <div>

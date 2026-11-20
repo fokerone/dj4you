@@ -11,9 +11,24 @@ export interface MixerState {
   readonly curve: CrossfaderCurve
   /** Master fader, 0..1 */
   readonly master: number
+  readonly cueMode: CueMode
+  /** Which decks are sent to the headphones */
+  readonly cue: readonly [boolean, boolean]
+  /** Headphone blend: 0 = only cued decks, 1 = only master */
+  readonly cueMix: number
+  readonly cueVolume: number
 }
 
 export const DEFAULT_MASTER = 0.9
+
+/**
+ * Headphone cue. Browsers give a page one audio output, so cue uses "split"
+ * mode like desktop DJ software: with a stereo Y-splitter cable the LEFT
+ * channel (headphones) carries the cue mix and the RIGHT channel (speakers)
+ * carries the master, both in mono. Recording and live streaming always get
+ * the normal stereo master.
+ */
+export type CueMode = 'off' | 'split'
 
 /**
  *   deck A out ─► xfA ─┐
@@ -28,9 +43,15 @@ export class Mixer extends Store<MixerState> {
   private readonly ctx: AudioContext
   private readonly xfA: GainNode
   private readonly xfB: GainNode
+  private readonly cueSends: [GainNode, GainNode]
+  private readonly hpCue: GainNode
+  private readonly hpMaster: GainNode
+  private readonly hpOut: GainNode
+  private readonly split: ChannelMergerNode
+  private readonly masterMono: GainNode
 
   constructor(ctx: AudioContext) {
-    super({ crossfader: 0.5, curve: 'smooth', master: DEFAULT_MASTER })
+    super({ crossfader: 0.5, curve: 'smooth', master: DEFAULT_MASTER, cueMode: 'off', cue: [false, false], cueMix: 0.15, cueVolume: 0.9 })
     this.ctx = ctx
     this.xfA = ctx.createGain()
     this.xfB = ctx.createGain()
@@ -51,6 +72,70 @@ export class Mixer extends Store<MixerState> {
 
     this.master.gain.value = faderCurve(DEFAULT_MASTER)
     this.applyCrossfader(true)
+
+    // Headphone (cue) path — only routed to the output in split mode.
+    const mono = () => {
+      const g = ctx.createGain()
+      g.channelCount = 1
+      g.channelCountMode = 'explicit'
+      g.channelInterpretation = 'speakers'
+      return g
+    }
+    this.cueSends = [ctx.createGain(), ctx.createGain()]
+    const cueBus = ctx.createGain()
+    this.hpCue = ctx.createGain()
+    this.hpMaster = ctx.createGain()
+    this.hpOut = mono()
+    this.masterMono = mono()
+    this.split = ctx.createChannelMerger(2)
+    for (const s of this.cueSends) {
+      s.gain.value = 0
+      s.connect(cueBus)
+    }
+    cueBus.connect(this.hpCue).connect(this.hpOut)
+    this.limiter.connect(this.hpMaster).connect(this.hpOut)
+    this.hpOut.connect(this.split, 0, 0) // left = headphones
+    this.limiter.connect(this.masterMono).connect(this.split, 0, 1) // right = speakers
+    this.applyCueMix()
+  }
+
+  setCueMode(cueMode: CueMode): void {
+    if (cueMode === this.state.cueMode) return
+    const dest = this.ctx.destination
+    if (cueMode === 'split') {
+      this.limiter.disconnect(dest)
+      this.split.connect(dest)
+    } else {
+      this.split.disconnect(dest)
+      this.limiter.connect(dest)
+    }
+    this.set({ cueMode })
+  }
+
+  toggleCue(index: 0 | 1): void {
+    const cue = [...this.state.cue] as [boolean, boolean]
+    cue[index] = !cue[index]
+    this.cueSends[index].gain.setTargetAtTime(cue[index] ? 1 : 0, this.ctx.currentTime, 0.01)
+    this.set({ cue })
+  }
+
+  setCueMix(v: number): void {
+    this.set({ cueMix: Math.min(1, Math.max(0, v)) })
+    this.applyCueMix()
+  }
+
+  setCueVolume(v: number): void {
+    this.set({ cueVolume: Math.min(1, Math.max(0, v)) })
+    this.applyCueMix()
+  }
+
+  private applyCueMix(): void {
+    const { cueMix, cueVolume } = this.state
+    const t = this.ctx.currentTime
+    // Equal-power blend between cue and master in the headphones.
+    this.hpCue.gain.setTargetAtTime(Math.cos((cueMix * Math.PI) / 2), t, 0.02)
+    this.hpMaster.gain.setTargetAtTime(Math.sin((cueMix * Math.PI) / 2), t, 0.02)
+    this.hpOut.gain.setTargetAtTime(faderCurve(cueVolume), t, 0.02)
   }
 
   /** The node that carries the final mix (for recording / streaming). */
@@ -60,6 +145,7 @@ export class Mixer extends Store<MixerState> {
 
   connectDeck(deck: Deck): void {
     deck.output.connect(deck.id === 'A' ? this.xfA : this.xfB)
+    deck.prefader.connect(this.cueSends[deck.id === 'A' ? 0 : 1])
   }
 
   setCrossfader(x: number): void {

@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Deck } from './audio/deck'
 import { engine } from './audio/engine'
 import { DeckView } from './components/DeckView'
+import { HeadphonesSheet } from './components/HeadphonesSheet'
+import { SummarySheet, type SummaryData } from './components/SummarySheet'
 import { LibrarySheet } from './components/LibrarySheet'
 import { LiveButton, LiveSheet } from './components/LiveSheet'
 import { Crossfader, MixerView } from './components/MixerView'
@@ -16,7 +18,7 @@ import { useShortcuts } from './hooks/useShortcuts'
 import { Brand, LangSwitch } from './components/Brand'
 import { useT } from './i18n'
 import { useStore } from './hooks/useEngine'
-import type { RecordingMeta } from './library/library'
+import { library, type RecordingMeta } from './library/library'
 
 type Tab = 'A' | 'mixer' | 'B'
 
@@ -36,6 +38,9 @@ export default function App() {
   const [toast, setToast] = useState<string | null>(null)
   const [welcome, setWelcome] = useState(shouldWelcome)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [hpOpen, setHpOpen] = useState(false)
+  const openHp = useCallback(() => setHpOpen(true), [])
+  const closeHp = useCallback(() => setHpOpen(false), [])
   const openMenu = useCallback(() => setMenuOpen(true), [])
   const closeMenu = useCallback(() => setMenuOpen(false), [])
   const toggleMenu = useCallback(() => setMenuOpen((o) => !o), [])
@@ -54,6 +59,48 @@ export default function App() {
     return () => window.removeEventListener('beforeunload', guard)
   }, [recState.recording, liveState.status])
 
+  // Returning visit: put last session's tracks back on the decks.
+  useEffect(() => {
+    if (shouldWelcome()) return
+    void library.restoreDecks(engine.decks).then((restored) => {
+      if (restored) coach.notify('info', t('Welcome back'), t('Your decks are loaded as you left them.'))
+    })
+    // Only on first mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Session recap: track each recording / live set from start to end.
+  const [summary, setSummary] = useState<SummaryData | null>(null)
+  const summaryRef = useRef<SummaryData | null>(null)
+  const showSummary = useCallback((s: SummaryData | null) => {
+    summaryRef.current = s
+    setSummary(s)
+  }, [])
+  useEffect(() => {
+    let rec = engine.recorder.getSnapshot().recording
+    let live = engine.live.getSnapshot().status === 'live'
+    const unsubRec = engine.recorder.subscribe(() => {
+      const now = engine.recorder.getSnapshot().recording
+      if (now && !rec) coach.beginSegment('rec')
+      if (!now && rec) {
+        const s = coach.endSegment('rec')
+        // Very short takes just get the "saved" toast.
+        if (s && s.seconds >= 15) showSummary(s)
+      }
+      rec = now
+    })
+    const unsubLive = engine.live.subscribe(() => {
+      const now = engine.live.getSnapshot().status === 'live'
+      if (now && !live) coach.beginSegment('live')
+      if (!now && live) showSummary(coach.endSegment('live'))
+      live = now
+    })
+    return () => {
+      unsubRec()
+      unsubLive()
+    }
+  }, [showSummary])
+
   // Surface recorder problems instead of hiding them in a tooltip.
   useEffect(() => {
     if (recState.error) coach.notify('info', recState.error)
@@ -70,7 +117,15 @@ export default function App() {
   const [deckA, deckB] = engine.decks
   const openLibrary = useCallback(() => setLibraryOpen(true), [])
   const closeLibrary = useCallback(() => setLibraryOpen(false), [])
-  const onRecSaved = useCallback((r: RecordingMeta | null) => setToast(r ? t('Saved "{name}" to the Library', { name: r.name }) : null), [t])
+  const onRecSaved = useCallback(
+    (r: RecordingMeta | null) => {
+      // Attach the file to the recap if one is showing; otherwise a toast.
+      const prev = summaryRef.current
+      if (prev?.kind === 'rec' && r) showSummary({ ...prev, recording: r })
+      else setToast(r ? t('Saved "{name}" to the Library', { name: r.name }) : null)
+    },
+    [t, showSummary],
+  )
 
   useEffect(() => {
     if (!toast) return
@@ -106,7 +161,7 @@ export default function App() {
           <DeckView deck={deckA} other={deckB} onOpenLibrary={openLibrary} />
         </div>
         <div className="panel panel-mixer">
-          <MixerView mixer={engine.mixer} decks={engine.decks} rec={
+          <MixerView mixer={engine.mixer} decks={engine.decks} onHeadphones={openHp} rec={
               <>
                 <RecButton className="rec-in-mixer" onSaved={onRecSaved} />
                 <LiveButton className="live-in-mixer" onOpen={openLive} />
@@ -127,7 +182,9 @@ export default function App() {
       <TutorialCard />
       <HintBar />
       <Notes />
-      <MenuSheet open={menuOpen} onClose={closeMenu} onWelcome={() => setWelcome(true)} />
+      <MenuSheet open={menuOpen} onClose={closeMenu} onWelcome={() => setWelcome(true)} onHeadphones={openHp} />
+      <HeadphonesSheet open={hpOpen} onClose={closeHp} />
+      <SummarySheet key={summary ? `${summary.kind}-${summary.seconds}` : 'none'} data={summary} onClose={() => showSummary(null)} />
       {welcome && <Welcome onDone={() => setWelcome(false)} />}
 
       <LibrarySheet

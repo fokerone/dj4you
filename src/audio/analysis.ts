@@ -31,6 +31,8 @@ const FPS = 200
 const MIN_BPM = 70
 const MAX_BPM = 180
 const MIN_CLARITY = 2
+/** Off-beat vs on-beat snare energy needed to call double time */
+const DOUBLE_RATIO = 0.8
 /** Mean log-energy rise on the beat; tiny for steady tones and noise. */
 const MIN_STRENGTH = 0.15
 const DEBUG = false
@@ -125,7 +127,7 @@ function normalize(a: Float32Array<ArrayBuffer>): Float32Array<ArrayBuffer> {
  *    then a fine pass around the winner.
  */
 export function detectTempo(mono: Float32Array, sampleRate: number): { bpm: number | null; firstBeat: number } {
-  const onset = onsetEnvelope(mono, sampleRate)
+  const { onset, bright } = onsetEnvelope(mono, sampleRate)
   if (onset.length < FPS * 4) return { bpm: null, firstBeat: 0 } // < 4 s of audio
 
   // Coarse pass.
@@ -150,6 +152,22 @@ export function detectTempo(mono: Float32Array, sampleRate: number): { bpm: numb
     const r = bestPhase(onset, bpm, 0.25)
     if (r.score > fine.score) fine = { bpm, phase: r.phase, score: r.score }
   }
+  // Half-time trap: at 85–90 BPM the comb also fits drum & bass (170–180) when
+  // its snares land on the "and"s. If the doubled grid scores nearly as well,
+  // the music really moves at the faster tempo.
+  if (fine.bpm < 95 && fine.bpm * 2 <= MAX_BPM + 0.5) {
+    // Backbeat test: snares/claps normally sit ON the beat (2 and 4). If they
+    // sit between this grid's beats instead, the real beat is twice as fast.
+    const period = (FPS * 60) / fine.bpm
+    const onBeats = meanAt(bright, fine.phase, period)
+    const between = meanAt(bright, fine.phase + period / 2, period)
+    if (DEBUG) console.log('backbeat between/on', (between / (onBeats || 1e-9)).toFixed(2))
+    if (between > onBeats * DOUBLE_RATIO) {
+      const dbl = bestPhase(onset, fine.bpm * 2, 0.25)
+      fine = { bpm: fine.bpm * 2, phase: dbl.phase, score: dbl.score }
+    }
+  }
+
   // Most produced music sits on an integer tempo: snap if it scores about as well.
   const rounded = Math.round(fine.bpm)
   const snapped = bestPhase(onset, rounded, 0.25)
@@ -161,7 +179,7 @@ export function detectTempo(mono: Float32Array, sampleRate: number): { bpm: numb
   return { bpm: Math.round(fine.bpm * 100) / 100, firstBeat: fine.phase / FPS }
 }
 
-function onsetEnvelope(x: Float32Array, sr: number): Float32Array {
+function onsetEnvelope(x: Float32Array, sr: number): { onset: Float32Array; bright: Float32Array } {
   const hop = sr / FPS
   const frames = Math.floor(x.length / hop)
   const low = new Float32Array(frames)
@@ -186,8 +204,11 @@ function onsetEnvelope(x: Float32Array, sr: number): Float32Array {
     full[f] = Math.log(1e-9 + ef)
   }
   const onset = new Float32Array(frames)
+  /** Onsets without a matching low-end rise: snares, claps, hats. */
+  const bright = new Float32Array(frames)
   for (let f = 1; f < frames; f++) {
     onset[f] = Math.max(0, low[f] - low[f - 1]) + 0.5 * Math.max(0, full[f] - full[f - 1])
+    bright[f] = Math.max(0, full[f] - full[f - 1] - Math.max(0, low[f] - low[f - 1]))
   }
   onset[0] = onset[1]
   // Subtract a 0.5 s moving average and half-wave rectify: keeps the peaks.
@@ -201,7 +222,19 @@ function onsetEnvelope(x: Float32Array, sr: number): Float32Array {
     const n = Math.min(frames - 1, f + win) - Math.max(0, f - win) + 1
     out[f] = Math.max(0, onset[f] - sum / n)
   }
-  return out
+  return { onset: out, bright }
+}
+
+/** Mean value at positions start, start + period, … (nearest frame, ±1 tolerance). */
+function meanAt(env: Float32Array, start: number, period: number): number {
+  let sum = 0
+  let n = 0
+  for (let pos = start; pos < env.length - 1; pos += period) {
+    const i = Math.round(pos)
+    sum += Math.max(env[i - 1] ?? 0, env[i], env[i + 1] ?? 0)
+    n++
+  }
+  return n ? sum / n : 0
 }
 
 /** Mean onset value at beat positions, maximised over grid phase. */

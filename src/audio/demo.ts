@@ -1,7 +1,7 @@
 /**
  * Built-in demo tracks, synthesized in the browser with an OfflineAudioContext:
- * no downloads, no licensing. Two short house-style tracks at different tempos
- * so beginners can try mixing and SYNC right away.
+ * no downloads, no licensing. Several styles and tempos so beginners can try
+ * mixing, SYNC and half/double-time blends right away.
  */
 
 export interface DemoSpec {
@@ -11,13 +11,43 @@ export interface DemoSpec {
   readonly root: number
   /** Chord roots in semitones from `root`, one per 2 bars (minor chords) */
   readonly progression: readonly number[]
+  readonly style?: Style
+  /** Genre label shown in the library */
+  readonly genre: string
+}
+
+export type Style = 'house' | 'techno' | 'hiphop' | 'dnb'
+
+/** A one-bar pattern on a 16-step grid. */
+interface Pattern {
+  kick: number[]
+  snare: number[]
+  /** Bar from which the snare/clap comes in */
+  snareFrom: number
+  hats: 'sixteenths' | 'eighths'
+  /** Delay of the off-beat 16ths/8ths, as a fraction of a 16th (swing) */
+  swing: number
+  openHat: boolean
+  bass: number[]
+  stabs: number[]
+  pad: 'breakdown' | 'always'
+}
+
+const PATTERNS: Record<Style, Pattern> = {
+  house: { kick: [0, 4, 8, 12], snare: [4, 12], snareFrom: 4, hats: 'sixteenths', swing: 0, openHat: true, bass: [2, 6, 10, 14], stabs: [6, 14], pad: 'breakdown' },
+  techno: { kick: [0, 4, 8, 12], snare: [4, 12], snareFrom: 8, hats: 'sixteenths', swing: 0, openHat: true, bass: [2, 3, 6, 7, 10, 11, 14, 15], stabs: [], pad: 'breakdown' },
+  hiphop: { kick: [0, 7, 10], snare: [4, 12], snareFrom: 0, hats: 'eighths', swing: 0.45, openHat: false, bass: [0, 10], stabs: [14], pad: 'always' },
+  dnb: { kick: [0, 10], snare: [4, 12], snareFrom: 0, hats: 'eighths', swing: 0, openHat: false, bass: [0, 3, 10], stabs: [], pad: 'always' },
 }
 
 export const DEMOS: readonly DemoSpec[] = [
-  { name: 'Demo · Sunrise (122)', bpm: 122, root: 55, progression: [0, -4, 3, -2] },
-  { name: 'Demo · Night Drive (126)', bpm: 126, root: 49, progression: [0, 3, -2, -4] },
-  { name: 'Demo · Afterglow (120)', bpm: 120, root: 46.25, progression: [0, 5, 3, -2] },
-  { name: 'Demo · Rush Hour (128)', bpm: 128, root: 51.91, progression: [0, -2, -4, -5] },
+  { name: 'Demo · Sunrise (122)', bpm: 122, root: 55, progression: [0, -4, 3, -2], genre: 'House' },
+  { name: 'Demo · Night Drive (126)', bpm: 126, root: 49, progression: [0, 3, -2, -4], genre: 'House' },
+  { name: 'Demo · Afterglow (120)', bpm: 120, root: 46.25, progression: [0, 5, 3, -2], genre: 'Deep house' },
+  { name: 'Demo · Rush Hour (128)', bpm: 128, root: 51.91, progression: [0, -2, -4, -5], genre: 'House' },
+  { name: 'Demo · Warehouse (132)', bpm: 132, root: 43.65, progression: [0, 0, -2, 0], genre: 'Techno', style: 'techno' },
+  { name: 'Demo · Boom Bap (90)', bpm: 90, root: 41.2, progression: [0, 5, 3, -2], genre: 'Hip-hop', style: 'hiphop' },
+  { name: 'Demo · Liquid (174)', bpm: 174, root: 46.25, progression: [0, -4, 3, -5], genre: 'Drum & bass', style: 'dnb' },
 ]
 
 const BARS = 32
@@ -69,29 +99,28 @@ export async function renderDemo(spec: DemoSpec): Promise<AudioBuffer> {
     }
   }
 
+  const pat = PATTERNS[spec.style ?? 'house']
+  const step = beat / 4
   for (let b = 0; b < BARS; b++) {
     const t0 = b * bar
     const cv = chordVoices.get(spec.progression[Math.floor(b / 2) % spec.progression.length])!
     const breakdown = b >= 16 && b < 20
     const full = b >= 8 && !breakdown
 
-    for (let k = 0; k < 4; k++) {
-      const t = t0 + k * beat
-      if (!breakdown) add(kickS, t)
-      if (b >= 4 && !breakdown && (k === 1 || k === 3)) add(clapS, t)
-      if (!breakdown || b >= 18) {
-        for (let s = 0; s < 4; s++) add(hatS, t + (s * beat) / 4, s === 0 ? 1 : 0.6 + 0.15 * ((b + k + s) % 3), 0.25)
-      }
-      if (full) {
-        add(openS, t + beat / 2, 1, -0.2)
-        add(cv.bass, t + beat / 2)
-      }
+    for (let s = 0; s < 16; s++) {
+      // Swing pushes the off-beat 16ths (or 8ths) a little late.
+      const offbeat = pat.hats === 'eighths' ? s % 4 === 2 : s % 2 === 1
+      const t = t0 + s * step + (offbeat ? pat.swing * step : 0)
+      if (!breakdown && pat.kick.includes(s)) add(kickS, t)
+      if (b >= pat.snareFrom && !breakdown && pat.snare.includes(s)) add(clapS, t)
+      const hatOn = pat.hats === 'sixteenths' || s % 2 === 0
+      if (hatOn && (!breakdown || b >= 18)) add(hatS, t, s % 4 === 0 ? 1 : 0.6 + 0.15 * ((b + s) % 3), 0.25)
+      if (full && pat.openHat && s % 4 === 2) add(openS, t, 1, -0.2)
+      if (full && pat.bass.includes(s)) add(cv.bass, t, s % 2 ? 0.7 : 1)
+      if (b >= 12 && pat.stabs.includes(s)) add(cv.stab, t, 1, s < 8 ? -0.15 : 0.15)
     }
-    if (b >= 12) {
-      add(cv.stab, t0 + 1.5 * beat, 1, -0.15)
-      add(cv.stab, t0 + 3.5 * beat, 1, 0.15)
-    }
-    if (b >= 16 && b < 24 && b % 2 === 0) add(cv.pad, t0)
+    const padHere = pat.pad === 'always' ? b % 2 === 0 : b >= 16 && b < 24 && b % 2 === 0
+    if (padHere) add(cv.pad, t0, pat.pad === 'always' ? 0.8 : 1)
   }
 
   const out = new AudioBuffer({ numberOfChannels: 2, length, sampleRate: SR })

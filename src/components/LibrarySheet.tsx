@@ -99,7 +99,7 @@ export function LibrarySheet({ open, onClose, onLoaded }: Props) {
                 <TrackRow
                   key={d.name}
                   title={d.name.replace(/^Demo · /, '').replace(/ \(\d+\)$/, '')}
-                  meta={t('{bpm} BPM · {dur} · made in your browser', { bpm: d.bpm, dur: formatDuration(demoDuration(d.bpm)) })}
+                  meta={t('{genre} · {bpm} BPM · {dur}', { genre: d.genre, bpm: d.bpm, dur: formatDuration(demoDuration(d.bpm)) })}
                   onDeck={(deck) => sendTo(deck, (dk) => library.loadDemo(i, dk))}
                 />
               ))}

@@ -85,6 +85,8 @@ export class Deck extends Store<DeckState> {
   readonly input: GainNode
   readonly output: GainNode
   readonly meter: AnalyserNode
+  /** Post-EQ/filter, pre-fader signal: feeds the headphone cue */
+  readonly prefader: GainNode
   private readonly eqNodes: Record<EqBand, BiquadFilterNode>
   private readonly hpf: BiquadFilterNode
   private readonly lpf: BiquadFilterNode
@@ -159,6 +161,7 @@ export class Deck extends Store<DeckState> {
     this.lpf.frequency.value = open.lowpass
 
     const post = ctx.createGain()
+    this.prefader = post
     this.input
       .connect(this.eqNodes.low)
       .connect(this.eqNodes.mid)

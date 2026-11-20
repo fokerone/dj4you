@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 
 interface KnobProps {
   label: string
@@ -13,6 +13,8 @@ interface KnobProps {
   className?: string
   /** Abbreviation used where space is tight (landscape phones) */
   shortLabel?: string
+  /** Value text for the drag bubble (defaults to `display`) */
+  format?: (v: number) => string
 }
 
 const SWEEP = 270 // degrees of travel
@@ -23,7 +25,8 @@ const DRAG_PX = 160 // pixels of vertical drag for the full range
  * arrow keys for fine steps. The arc is drawn from `center`, so bipolar
  * controls (EQ, filter) show which way they are turned.
  */
-export function Knob({ label, value, min, max, onChange, center = min, display, className, shortLabel }: KnobProps) {
+export function Knob({ label, value, min, max, onChange, center = min, display, className, shortLabel, format }: KnobProps) {
+  const [active, setActive] = useState(false)
   const drag = useRef<{ x: number; y: number; v: number } | null>(null)
   const lastTap = useRef(0)
   const range = max - min
@@ -35,7 +38,7 @@ export function Knob({ label, value, min, max, onChange, center = min, display, 
   const detent = (v: number) => (center !== min && Math.abs(v - center) < range * 0.02 ? center : v)
 
   return (
-    <div className={`knob ${className ?? ''}`}>
+    <div className={`knob ${active ? 'is-active' : ''} ${className ?? ''}`}>
       <div
         className="knob-dial"
         role="slider"
@@ -55,6 +58,7 @@ export function Knob({ label, value, min, max, onChange, center = min, display, 
           lastTap.current = now
           e.currentTarget.setPointerCapture(e.pointerId)
           drag.current = { x: e.clientX, y: e.clientY, v: value }
+          setActive(true)
         }}
         onPointerMove={(e) => {
           const d = drag.current
@@ -62,8 +66,14 @@ export function Knob({ label, value, min, max, onChange, center = min, display, 
           const delta = (d.y - e.clientY + (e.clientX - d.x)) / DRAG_PX
           set(detent(d.v + delta * range))
         }}
-        onPointerUp={() => (drag.current = null)}
-        onPointerCancel={() => (drag.current = null)}
+        onPointerUp={() => {
+          drag.current = null
+          setActive(false)
+        }}
+        onPointerCancel={() => {
+          drag.current = null
+          setActive(false)
+        }}
         onKeyDown={(e) => {
           const step = range / 50
           if (e.key === 'ArrowUp' || e.key === 'ArrowRight') set(value + step)
@@ -82,6 +92,11 @@ export function Knob({ label, value, min, max, onChange, center = min, display, 
         <div className="knob-cap" style={{ transform: `rotate(${angle(value)}deg)` }}>
           <i />
         </div>
+        {active && (format || display) && (
+          <span className="value-bubble knob-bubble" aria-hidden>
+            {format ? format(value) : display}
+          </span>
+        )}
       </div>
       <span className="knob-label">{label}</span>
       {shortLabel && (

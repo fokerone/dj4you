@@ -4,9 +4,10 @@ A mobile-friendly DJ desk in the browser. Anyone with a phone or PC and a web br
 
 - Two decks with waveform, BPM detection, beat grid, SYNC and jog wheels
 - Mixer with 3-band EQ, filter, channel faders, crossfader (blend / cut) and meters
+- Headphone cue (split mode: left = headphones, right = speakers with a Y-splitter cable)
 - Hot cues, beat-synced loops, echo and reverb
-- On-device library (IndexedDB) with a built-in starter pack of generated demo beats
-- Record your mix; installable PWA that works offline
+- On-device library (IndexedDB) with a built-in starter pack of 7 generated demo beats (house, techno, hip-hop 90, drum & bass 174); decks are restored on your next visit
+- Record your mix and get a session recap (setlist, transitions, achievements, share); installable PWA that works offline
 - A friendly coach: guided first-mix tutorial, gentle feedback on transitions, one-tap fixes when beats clash, and 13 achievements
 - Spanish and English UI
 - Go live: stream your mix to up to 20 listeners over WebRTC (stereo Opus, 192 kb/s), with a share link, QR code and a public "Live now" lobby

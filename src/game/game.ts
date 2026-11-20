@@ -30,6 +30,28 @@ export interface Hint {
   readonly syncDeck?: 'A' | 'B'
 }
 
+export type SegmentKind = 'rec' | 'live'
+
+/** What happened during a recording or live set. */
+export interface SessionSummary {
+  readonly kind: SegmentKind
+  readonly seconds: number
+  readonly transitions: number
+  readonly perfect: number
+  /** Tracks heard, in order */
+  readonly tracks: readonly string[]
+  /** Achievement ids unlocked during it */
+  readonly unlocked: readonly string[]
+}
+
+interface Segment {
+  startedAt: number
+  transitions: number
+  perfect: number
+  achievements: number
+  tracks: string[]
+}
+
 export interface QuestStep {
   readonly id: string
   readonly title: string
@@ -118,6 +140,8 @@ export class Coach extends Store<CoachState> {
   private lastFilter = [0, 0]
   private nextAchievementAt = 0
   private hintDismissed = new Map<Hint['id'], number>()
+  private perfectCount = 0
+  private segments = new Map<SegmentKind, Segment>()
   private ticking = 0
 
   constructor(engine: AudioEngine) {
@@ -174,6 +198,31 @@ export class Coach extends Store<CoachState> {
     if (h.syncDeck === 'A') a.syncTo(b)
     else b.syncTo(a)
     this.set({ hint: null })
+  }
+
+  /** Start tracking a recording / live set for its summary. */
+  beginSegment(kind: SegmentKind): void {
+    this.segments.set(kind, {
+      startedAt: Date.now(),
+      transitions: this.state.transitions,
+      perfect: this.perfectCount,
+      achievements: this.state.achievements.length,
+      tracks: [],
+    })
+  }
+
+  endSegment(kind: SegmentKind): SessionSummary | null {
+    const seg = this.segments.get(kind)
+    this.segments.delete(kind)
+    if (!seg) return null
+    return {
+      kind,
+      seconds: (Date.now() - seg.startedAt) / 1000,
+      transitions: this.state.transitions - seg.transitions,
+      perfect: this.perfectCount - seg.perfect,
+      tracks: seg.tracks,
+      unlocked: this.state.achievements.slice(seg.achievements),
+    }
   }
 
   resetProgress(): void {
@@ -280,6 +329,14 @@ export class Coach extends Store<CoachState> {
       this.clashSecs = 0
     }
 
+    // Setlist for running recordings / live sets
+    if (this.segments.size) {
+      ;[sa, sb].forEach((s, i) => {
+        if (weights[i] <= AUDIBLE || !s.trackName) return
+        for (const seg of this.segments.values()) if (seg.tracks.at(-1) !== s.trackName && !seg.tracks.includes(s.trackName)) seg.tracks.push(s.trackName)
+      })
+    }
+
     // Achievements from what's happening
     for (const [i, s] of [sa, sb].entries()) {
       if (!s.playing) continue
@@ -332,6 +389,7 @@ export class Coach extends Store<CoachState> {
     }
     if (blend >= PERFECT_BLEND) {
       this.streak++
+      this.perfectCount++
       this.notify('success', t('Perfect transition'), t('{n}s seamless blend', { n: blend.toFixed(0) }))
       this.unlock('perfect')
       buzz([20, 30, 60])
