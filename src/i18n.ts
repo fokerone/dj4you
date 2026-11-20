@@ -394,6 +394,8 @@ const ES: Record<string, string> = {
   'Warn before a track ends': 'Avisar antes de que termine un tema',
   Off: 'No',
   Favorites: 'Favoritos',
+  'Orchestrated by': 'Orquestado por',
+  'Developed by': 'Desarrollado por',
   'Searching "{q}"…': 'Buscando "{q}"…',
   'Finding {genre} music…': 'Buscando música {genre}…',
   'Add to favorites': 'Añadir a favoritos',

@@ -4,7 +4,7 @@ import { coach } from '../game'
 import { useStore } from '../hooks/useEngine'
 import { SHORTCUTS } from '../hooks/useShortcuts'
 import { useT } from '../i18n'
-import { Brand, LangSwitch } from './Brand'
+import { Brand, Credits, LangSwitch } from './Brand'
 import { END_WARNINGS, prefs } from '../library/prefs'
 
 /** Short confirmations and achievement unlocks, top of the screen. */
@@ -301,6 +301,7 @@ export function MenuSheet({
         <footer className="sheet-foot">
           <Brand />
           <span className="dim">{t('Free · No sign-up · Runs in your browser')}</span>
+          <Credits className="menu-credits" />
         </footer>
       </div>
     </div>

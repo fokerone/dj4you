@@ -6,7 +6,7 @@
 
 🎛️ Orquestado por **Foker** ([fokerone](https://github.com/fokerone)) · 🤖 Desarrollado por **[Claude Code](https://claude.com/claude-code)**
 
-[**▶ Abrir DJ4YOU**](https://fokerone.github.io/dj4you/) · [Ayuda dentro de la app](https://fokerone.github.io/dj4you/#ayuda)
+**v1.0.0** · [**▶ Abrir DJ4YOU**](https://fokerone.github.io/dj4you/) · [Ayuda dentro de la app](https://fokerone.github.io/dj4you/#ayuda)
 
 <img src="docs/desktop.png" alt="DJ4YOU en el escritorio: dos decks sincronizados y el mezclador" width="860">
 
@@ -138,6 +138,10 @@ cd server && npm install && npm start   # local: http://localhost:9000
 ```bash
 VITE_SIGNAL_URL=http://localhost:9000 npm run dev
 ```
+
+## Versiones
+
+DJ4YOU usa [versionado semántico](https://semver.org/lang/es/). La versión se toma de `package.json` y se muestra al pie de la bienvenida y del menú. Los cambios de cada versión están en [CHANGELOG.md](CHANGELOG.md).
 
 ## Créditos
 

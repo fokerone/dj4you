@@ -4,7 +4,7 @@ import { coach } from '../game'
 import { markWelcomed } from '../game/welcome'
 import { useT } from '../i18n'
 import { library } from '../library/library'
-import { Brand, LangSwitch } from './Brand'
+import { Brand, Credits, LangSwitch } from './Brand'
 import { LiveIcon } from './NextSteps'
 import { MAX_LISTENERS } from '../live/config'
 
@@ -107,6 +107,8 @@ export function Welcome({ onDone }: { onDone: () => void }) {
         <li>{t('Your music stays on your device')}</li>
         <li>{t('Works offline once installed')}</li>
       </ul>
+
+      <Credits className="welcome-credits" />
     </div>
   )
 }

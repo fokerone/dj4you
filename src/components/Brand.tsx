@@ -47,3 +47,23 @@ export function LangSwitch({ className }: { className?: string }) {
     </div>
   )
 }
+
+export const APP_VERSION = __APP_VERSION__
+
+/** "Orchestrated by Foker · Developed by Claude Code · v1.0.0" */
+export function Credits({ className }: { className?: string }) {
+  const t = useT()
+  return (
+    <p className={`credits ${className ?? ''}`}>
+      <span>
+        {t('Orchestrated by')} <b>Foker</b>
+      </span>
+      <span aria-hidden>·</span>
+      <span>
+        {t('Developed by')} <b>Claude Code</b>
+      </span>
+      <span aria-hidden>·</span>
+      <span className="credits-version">v{APP_VERSION}</span>
+    </p>
+  )
+}
