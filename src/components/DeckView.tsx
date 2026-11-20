@@ -3,6 +3,8 @@ import { useRef, useState } from 'react'
 import type { Deck } from '../audio/deck'
 import { useAnimationFrame, useStore } from '../hooks/useEngine'
 import { library } from '../library/library'
+import { audioAccept, isAudioFile } from '../library/audioFiles'
+import { coach } from '../game'
 import { Fader } from './Fader'
 import { JogWheel } from './JogWheel'
 import { Overview } from './Overview'
@@ -26,7 +28,12 @@ export function DeckView({ deck, other, onOpenLibrary }: { deck: Deck; other: De
   })
 
   const loadFile = (file: File | undefined) => {
-    if (file) void library.loadFile(file, deck)
+    if (!file) return
+    if (!isAudioFile(file)) {
+      coach.notify('info', t('"{name}" isn\u2019t an audio file', { name: file.name }), t('Choose an MP3, M4A, WAV, AIFF, FLAC or OGG file.'))
+      return
+    }
+    void library.loadFile(file, deck)
   }
 
   const ready = deck.loaded && !state.loading
@@ -88,7 +95,7 @@ export function DeckView({ deck, other, onOpenLibrary }: { deck: Deck; other: De
         <input
           ref={fileRef}
           type="file"
-          accept="audio/*"
+          accept={audioAccept()}
           hidden
           onChange={(e) => {
             loadFile(e.currentTarget.files?.[0])

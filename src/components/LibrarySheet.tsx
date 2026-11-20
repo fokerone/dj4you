@@ -7,6 +7,8 @@ import { useStore } from '../hooks/useEngine'
 import { library, type RecordingMeta, type TrackMeta } from '../library/library'
 import { hostDownloads, saveFile, type SaveOutcome } from '../library/saveFile'
 import { install } from '../pwa'
+import { audioAccept, isAudioFile } from '../library/audioFiles'
+import { coach } from '../game'
 
 interface Props {
   open: boolean
@@ -52,13 +54,16 @@ export function LibrarySheet({ open, onClose, onLoaded }: Props) {
           <input
             ref={fileRef}
             type="file"
-            accept="audio/*"
+            accept={audioAccept()}
             multiple
             hidden
             onChange={(e) => {
               const files = [...(e.currentTarget.files ?? [])]
               e.currentTarget.value = ''
-              if (files.length) void library.addFiles(files)
+              const audio = files.filter(isAudioFile)
+              const skipped = files.length - audio.length
+              if (skipped) coach.notify('info', t('{n} file(s) skipped', { n: skipped }), t('Only audio files can be added.'))
+              if (audio.length) void library.addFiles(audio)
             }}
           />
         </header>

@@ -377,6 +377,11 @@ const ES: Record<string, string> = {
   'Keep mixing': 'Seguir mezclando',
   'Welcome back': 'Bienvenido de nuevo',
   'Your decks are loaded as you left them.': 'Tus decks están cargados como los dejaste.',
+  // file picker
+  '"{name}" isn’t an audio file': '"{name}" no es un archivo de audio',
+  'Choose an MP3, M4A, WAV, AIFF, FLAC or OGG file.': 'Elige un archivo MP3, M4A, WAV, AIFF, FLAC u OGG.',
+  '{n} file(s) skipped': '{n} archivo(s) omitido(s)',
+  'Only audio files can be added.': 'Solo se pueden añadir archivos de audio.',
 }
 
 function detect(): Lang {
