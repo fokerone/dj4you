@@ -4,6 +4,7 @@ import { engine } from './audio/engine'
 import { DeckView } from './components/DeckView'
 import { HeadphonesSheet } from './components/HeadphonesSheet'
 import { HelpSheet } from './components/HelpSheet'
+import { NextSteps } from './components/NextSteps'
 import type { HelpTab } from './help/content'
 import { SummarySheet, type SummaryData } from './components/SummarySheet'
 import { LibrarySheet } from './components/LibrarySheet'
@@ -205,6 +206,14 @@ export default function App() {
       <Notes />
       <MenuSheet open={menuOpen} onClose={closeMenu} onWelcome={() => setWelcome(true)} onHeadphones={openHp} onHelp={openHelp} />
       <HelpSheet open={helpOpen} onClose={closeHelp} onSpotlight={spotlight} />
+      <NextSteps
+        onGoLive={openLive}
+        onRecord={() => {
+          // Same as pressing REC: the take is saved to the Library when stopped.
+          void engine.resume()
+          engine.recorder.start((blob, seconds) => void library.addRecording(blob, seconds).then(onRecSaved))
+        }}
+      />
       <HeadphonesSheet open={hpOpen} onClose={closeHp} />
       <SummarySheet key={summary ? `${summary.kind}-${summary.seconds}` : 'none'} data={summary} onClose={() => showSummary(null)} />
       {welcome && <Welcome onDone={() => setWelcome(false)} />}

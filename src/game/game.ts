@@ -72,6 +72,8 @@ export interface CoachState {
   /** Index into QUEST, or -1 when the tutorial is off / done */
   readonly questStep: number
   readonly questDone: boolean
+  /** The tutorial was just finished: show the 'what next' card */
+  readonly questJustFinished: boolean
   /** Session stats shown in the menu */
   readonly transitions: number
   readonly mixSeconds: number
@@ -156,6 +158,7 @@ export class Coach extends Store<CoachState> {
       achievements: p.achievements,
       questStep: -1,
       questDone: p.questDone,
+      questJustFinished: false,
       transitions: 0,
       mixSeconds: 0,
     })
@@ -168,6 +171,11 @@ export class Coach extends Store<CoachState> {
   startQuest(): void {
     this.set({ questStep: 0 })
     this.syncCoachMarks()
+  }
+
+  /** Close the end-of-tutorial card. */
+  ackQuestFinished(): void {
+    this.set({ questJustFinished: false })
   }
 
   skipQuest(): void {
@@ -430,7 +438,7 @@ export class Coach extends Store<CoachState> {
     const next = this.state.questStep + 1
     if (next >= QUEST.length) {
       this.set({ questStep: -1, questDone: true })
-      this.notify('success', t('Tutorial complete'), t("You're a DJ now. Keep the music flowing!"))
+      this.set({ questJustFinished: true })
       this.save()
     } else {
       this.set({ questStep: next })

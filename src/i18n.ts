@@ -399,6 +399,17 @@ const ES: Record<string, string> = {
   'On a computer. They don’t work while you type in a text box.': 'En ordenador. No funcionan mientras escribes en un cuadro de texto.',
   'Open this help': 'Abrir esta ayuda',
   'Show on the desk': 'Ver en la mesa',
+  // promos
+  'You made your first mix!': '¡Hiciste tu primera mezcla!',
+  'You loaded, synced and blended two tracks like a real DJ. Now make it count:': 'Cargaste, sincronizaste y mezclaste dos temas como un DJ de verdad. Ahora sácale partido:',
+  'Starts now. Press REC again to stop: it is saved in your Library to listen, download or share.': 'Empieza ya. Pulsa REC otra vez para parar: se guarda en tu Biblioteca para escucharla, descargarla o compartirla.',
+  'Share a link or QR code and up to {n} people listen in their browser, no app needed.': 'Comparte un enlace o un código QR y hasta {n} personas te escuchan en su navegador, sin instalar nada.',
+  'Available on the DJ4YOU website (not in this preview). Up to {n} listeners.': 'Disponible en la web de DJ4YOU (no en esta vista previa). Hasta {n} oyentes.',
+  'Also in DJ4YOU': 'También en DJ4YOU',
+  'Record your sets': 'Graba tus sesiones',
+  'Save your mix, download it and share it.': 'Guarda tu mezcla, descárgala y compártela.',
+  'Stream live': 'Transmite en vivo',
+  'Up to {n} listeners with a link or QR code.': 'Hasta {n} oyentes con un enlace o código QR.',
 }
 
 function detect(): Lang {

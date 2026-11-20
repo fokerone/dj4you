@@ -5,6 +5,8 @@ import { markWelcomed } from '../game/welcome'
 import { useT } from '../i18n'
 import { library } from '../library/library'
 import { Brand, LangSwitch } from './Brand'
+import { LiveIcon } from './NextSteps'
+import { MAX_LISTENERS } from '../live/config'
 
 /** Welcome: learn with the guided first mix, jump straight in, or start empty. */
 export function Welcome({ onDone }: { onDone: () => void }) {
@@ -75,6 +77,27 @@ export function Welcome({ onDone }: { onDone: () => void }) {
           <button className="welcome-empty" onClick={() => finish('empty')}>
             {t('Start with an empty desk')}
           </button>
+
+          <div className="welcome-promos" aria-label={t('Also in DJ4YOU')}>
+            <div className="promo-mini">
+              <span className="promo-icon promo-rec" aria-hidden>
+                <span className="rec-dot" />
+              </span>
+              <span>
+                <b>{t('Record your sets')}</b>
+                <small>{t('Save your mix, download it and share it.')}</small>
+              </span>
+            </div>
+            <div className="promo-mini">
+              <span className="promo-icon promo-live" aria-hidden>
+                <LiveIcon />
+              </span>
+              <span>
+                <b>{t('Stream live')}</b>
+                <small>{t('Up to {n} listeners with a link or QR code.', { n: MAX_LISTENERS })}</small>
+              </span>
+            </div>
+          </div>
         </div>
       </div>
 
