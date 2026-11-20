@@ -144,29 +144,38 @@ function clean(s: unknown, max: number): string {
 const SPEEDS = ['verylow', 'low', 'medium', 'high', 'veryhigh']
 
 /**
- * Jamendo's API has no BPM, so the tempo DJ4YOU detects when a track is
+ * Jamendo's API has no BPM or key, so what DJ4YOU detects when a track is
  * loaded is kept here (by track id) and shown in the list from then on.
  */
-const BPM_KEY = 'dj4you.jamendoBpm'
-const MAX_BPMS = 500
+export interface TrackInfo {
+  readonly bpm?: number
+  readonly key?: number
+}
+const INFO_KEY = 'dj4you.jamendoInfo'
+const OLD_BPM_KEY = 'dj4you.jamendoBpm'
+const MAX_INFO = 500
 
-export function knownBpms(): Record<string, number> {
+export function knownInfo(): Record<string, TrackInfo> {
   try {
-    return JSON.parse(localStorage.getItem(BPM_KEY) ?? '{}') as Record<string, number>
+    const info = JSON.parse(localStorage.getItem(INFO_KEY) ?? 'null') as Record<string, TrackInfo> | null
+    if (info) return info
+    // Earlier versions kept only the BPM.
+    const old = JSON.parse(localStorage.getItem(OLD_BPM_KEY) ?? '{}') as Record<string, number>
+    return Object.fromEntries(Object.entries(old).map(([id, bpm]) => [id, { bpm }]))
   } catch {
     return {}
   }
 }
 
-export function rememberBpm(id: string, bpm: number | null): void {
-  if (!bpm) return
+export function rememberInfo(id: string, bpm: number | null, key: number | null): void {
+  if (!bpm && key === null) return
   try {
-    const all = knownBpms()
+    const all = { ...knownInfo() }
     delete all[id]
-    all[id] = Math.round(bpm * 10) / 10
+    all[id] = { ...(bpm ? { bpm: Math.round(bpm * 10) / 10 } : {}), ...(key !== null ? { key } : {}) }
     const ids = Object.keys(all)
-    for (const old of ids.slice(0, Math.max(0, ids.length - MAX_BPMS))) delete all[old]
-    localStorage.setItem(BPM_KEY, JSON.stringify(all))
+    for (const old of ids.slice(0, Math.max(0, ids.length - MAX_INFO))) delete all[old]
+    localStorage.setItem(INFO_KEY, JSON.stringify(all))
   } catch {
     /* not kept */
   }

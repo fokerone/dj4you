@@ -1,5 +1,5 @@
 import { Deck } from './deck'
-import { Mixer } from './mixer'
+import { crossfaderGains, Mixer } from './mixer'
 import { Broadcaster } from '../live/broadcaster'
 import { Recorder } from './recorder'
 
@@ -31,6 +31,26 @@ export class AudioEngine {
     this.live = new Broadcaster(this)
 
     this.installUnlock()
+  }
+
+  /**
+   * The deck the audience hears most (playing, by channel volume and
+   * crossfader), or else the first deck with a track; null if both are empty.
+   */
+  mainDeck(): Deck | null {
+    const { crossfader, curve } = this.mixer.getSnapshot()
+    const xf = crossfaderGains(crossfader, curve)
+    let best: Deck | null = null
+    let loudest = 0
+    this.decks.forEach((d, i) => {
+      const s = d.getSnapshot()
+      const w = s.playing ? s.volume * s.volume * xf[i] : 0
+      if (w > loudest) {
+        loudest = w
+        best = d
+      }
+    })
+    return best ?? this.decks.find((d) => d.loaded) ?? null
   }
 
   /** Browsers start audio suspended until a user gesture. */

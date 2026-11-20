@@ -4,6 +4,7 @@ import { LOBBY_URL } from '../live/config'
 import { LiveListener } from '../live/listener'
 import { Brand, LangSwitch } from '../components/Brand'
 import { useT } from '../i18n'
+import { FloatingReactions, ReactionBar } from '../components/Reactions'
 
 const listener = new LiveListener()
 // Handy for debugging from the browser console in dev builds.
@@ -33,7 +34,7 @@ export default function ListenerApp() {
 
 function Player({ id }: { id: string }) {
   const t = useT()
-  const { status, meta, stream } = useStore(listener)
+  const { status, meta, stream, reactionFeed } = useStore(listener)
   const audioRef = useRef<HTMLAudioElement>(null)
   const [blocked, setBlocked] = useState(false)
   const [volume, setVolume] = useState(1)
@@ -91,6 +92,7 @@ function Player({ id }: { id: string }) {
               </li>
             ))}
           </ul>
+          <ReactionBar onReact={(e) => listener.react(e)} />
           <div className="player-foot">
             <span className="dim">
               {meta.listeners} {t(meta.listeners === 1 ? 'listener' : 'listeners')} · <Since startedAt={meta.startedAt} />
@@ -128,6 +130,7 @@ function Player({ id }: { id: string }) {
           </div>
         </div>
       )}
+      <FloatingReactions feed={reactionFeed} className="is-listener" />
       <audio ref={audioRef} autoPlay playsInline />
     </section>
   )

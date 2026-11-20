@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { ScrollRow } from './ScrollRow'
 import { HELP, type HelpItem, type HelpTab } from '../help/content'
 import { useStore } from '../hooks/useEngine'
 import { SHORTCUTS } from '../hooks/useShortcuts'
@@ -72,7 +73,7 @@ export function HelpSheet({ open, onClose, onSpotlight }: Props) {
             onChange={(e) => setQuery(e.target.value)}
           />
           {!query && (
-            <nav className="help-nav" aria-label={t('Help sections')}>
+            <ScrollRow className="help-nav" role="navigation" label={t('Help sections')}>
               {sections.map((s) => (
                 <button key={s.id} className="help-chip" onClick={() => jump(s.id)}>
                   {s.title}
@@ -81,7 +82,7 @@ export function HelpSheet({ open, onClose, onSpotlight }: Props) {
               <button className="help-chip help-chip-keys" onClick={() => jump('keys')}>
                 {t('Keyboard shortcuts')}
               </button>
-            </nav>
+            </ScrollRow>
           )}
         </div>
 

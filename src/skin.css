@@ -3832,3 +3832,391 @@ button.deck-bpm:active:not(:disabled) {
     font-size: 0.68rem;
   }
 }
+
+/* ---------- sideways-scrolling chip rows ---------- */
+.scroll-row {
+  position: relative;
+  min-width: 0;
+}
+.scroll-row-track {
+  scroll-behavior: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.scroll-row.has-start .scroll-row-track {
+  mask-image: linear-gradient(90deg, transparent 0, #000 44px);
+}
+.scroll-row.has-end .scroll-row-track {
+  mask-image: linear-gradient(90deg, #000 calc(100% - 44px), transparent);
+}
+.scroll-row.has-start.has-end .scroll-row-track {
+  mask-image: linear-gradient(90deg, transparent 0, #000 44px, #000 calc(100% - 44px), transparent);
+}
+.scroll-row-btn {
+  position: absolute;
+  top: 50%;
+  z-index: 1;
+  width: 30px;
+  height: 30px;
+  margin-top: -16px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  border: 1px solid rgb(255 255 255 / 0.16);
+  background: #1b2030;
+  color: #fff;
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 2px 10px rgb(0 0 0 / 0.5);
+}
+.scroll-row-btn[hidden] {
+  display: none;
+}
+.scroll-row-btn.is-start {
+  left: -4px;
+}
+.scroll-row-btn.is-end {
+  right: -4px;
+}
+.scroll-row-btn:hover {
+  background: #262d40;
+}
+/* On touch screens a swipe is enough: keep the fades, drop the buttons. */
+@media (pointer: coarse) {
+  .scroll-row-btn {
+    display: none;
+  }
+}
+
+/* ---------- musical key ---------- */
+.deck-key {
+  margin-left: 6px;
+  padding: 0 5px;
+  border-radius: 4px;
+  font-style: normal;
+  font-weight: 700;
+  color: #07080c;
+  background: #a7f3d0;
+  letter-spacing: 0.02em;
+}
+.lib-key {
+  display: inline-block;
+  padding: 0 5px;
+  border-radius: 4px;
+  font-weight: 700;
+  font-size: 0.72rem;
+  color: #a7f3d0;
+  border: 1px solid rgb(167 243 208 / 0.4);
+}
+
+/* ---------- library v1.1: rows, queue, suggestions, tools ---------- */
+.lib-title {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+}
+.lib-title > span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fav-inline {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  margin: -6px 0 -6px -6px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  border-radius: 999px;
+}
+.fav-inline .fav-star {
+  font-size: 1.05rem;
+}
+.fav-inline:hover {
+  background: rgb(255 255 255 / 0.06);
+}
+.btn-queue svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.btn-queue.is-on {
+  color: #a7f3d0;
+  border-color: rgb(167 243 208 / 0.5);
+}
+.lib-note-line {
+  margin-top: 2px;
+  font-size: 0.75rem;
+}
+.mix-reason {
+  color: #86efac;
+  font-weight: 600;
+  font-size: 0.75rem;
+}
+.lib-section h3 {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.lib-section h3 .dim {
+  text-transform: none;
+  letter-spacing: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  max-width: 100%;
+}
+.lib-h-action {
+  margin-left: auto;
+  min-height: 28px !important;
+  padding: 2px 10px;
+  font-size: 0.75rem;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.lib-suggest {
+  padding: 10px;
+  margin-inline: -10px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgb(34 211 238 / 0.08), rgb(134 239 172 / 0.06));
+  border: 1px solid rgb(134 239 172 / 0.18);
+}
+.lib-queue ol {
+  padding: 0;
+  margin: 0;
+}
+.lib-hint {
+  margin: 8px 2px 0;
+  font-size: 0.78rem;
+  color: #9aa3b5;
+}
+.lib-tools {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.lib-tools .scroll-row {
+  grid-column: 1 / -1;
+}
+.lib-search {
+  min-height: 40px;
+}
+.lib-sort {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  color: #9aa3b5;
+}
+.lib-sort select {
+  min-height: 40px;
+  padding: 0 10px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: #0e1119;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.85rem;
+}
+.help-chip:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+@media (max-width: 420px) {
+  .lib-sort > span {
+    display: none;
+  }
+  .lib-actions {
+    gap: 4px;
+  }
+  .lib-actions .btn-small {
+    min-width: 36px;
+  }
+}
+
+/* ---------- AUTO (automix) and next-from-queue ---------- */
+.strip-master .live-in-mixer {
+  margin-bottom: 0;
+}
+.strip-master .auto-in-mixer {
+  min-width: 0;
+  width: 100%;
+  min-height: 36px;
+  padding: 0 6px;
+  font-size: 0.8rem;
+  margin-bottom: auto;
+}
+.btn-auto {
+  --auto: #86efac;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-variant-numeric: tabular-nums;
+}
+.auto-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--auto) 45%, #333);
+}
+.btn-auto.is-on {
+  border-color: var(--auto);
+  color: #052e16;
+  background: var(--auto);
+}
+.btn-auto.is-on .auto-dot {
+  background: #052e16;
+}
+.btn-auto.is-mixing .auto-dot {
+  animation: rec-pulse 0.8s ease-in-out infinite;
+}
+.auto-count {
+  font-size: 0.7rem;
+  opacity: 0.8;
+}
+.btn-next {
+  position: relative;
+}
+.btn-next svg path {
+  fill: currentColor;
+  stroke: currentColor;
+}
+.queue-count {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: #a7f3d0;
+  color: #052e16;
+  font-size: 0.65rem;
+  font-weight: 800;
+  line-height: 17px;
+  text-align: center;
+}
+
+/* ---------- Moves pads ---------- */
+.pad-move {
+  color: #e9d5ff;
+  border-color: rgb(192 132 252 / 0.45);
+}
+.pad-move:active:not(:disabled),
+.pad-roll.is-on {
+  background: #c084fc;
+  border-color: #c084fc;
+  color: #1e0b33;
+}
+.pad-roll .roll-size {
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.08);
+  cursor: pointer;
+}
+.pad-roll {
+  touch-action: none;
+}
+
+/* ---------- live reactions ---------- */
+.reactions-float {
+  position: fixed;
+  right: 16px;
+  bottom: 90px;
+  width: 140px;
+  height: 260px;
+  pointer-events: none;
+  z-index: 18;
+}
+.reactions-float.is-listener {
+  position: absolute;
+  right: 8px;
+  bottom: 120px;
+}
+.reaction-bubble {
+  position: absolute;
+  bottom: 0;
+  font-size: 1.9rem;
+  animation: reaction-rise 2.5s ease-out forwards;
+  filter: drop-shadow(0 2px 6px rgb(0 0 0 / 0.5));
+}
+.reaction-bubble.is-mine {
+  font-size: 2.3rem;
+}
+@keyframes reaction-rise {
+  0% {
+    transform: translateY(0) scale(0.6);
+    opacity: 0;
+  }
+  12% {
+    transform: translateY(-20px) scale(1.1);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-240px) scale(0.9) rotate(-8deg);
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .reaction-bubble {
+    animation: reaction-fade 1.6s ease-out forwards;
+  }
+  @keyframes reaction-fade {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+    }
+  }
+}
+.reaction-bar {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin: 12px 0 4px;
+}
+.reaction-btn {
+  width: 52px;
+  height: 52px;
+  border-radius: 999px;
+  border: 1px solid rgb(255 255 255 / 0.14);
+  background: rgb(255 255 255 / 0.05);
+  font-size: 1.6rem;
+  cursor: pointer;
+  transition: transform 0.12s;
+}
+.reaction-btn:active {
+  transform: scale(0.88);
+}
+.reaction-counts {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px 14px;
+  margin: 4px 0 10px;
+  font-size: 1.1rem;
+}
+.reaction-counts.dim {
+  font-size: 0.82rem;
+}
+.reaction-counts b {
+  font-size: 0.9rem;
+}
+.player {
+  position: relative;
+}

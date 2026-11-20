@@ -18,7 +18,27 @@ export interface LiveMeta {
   readonly decks: readonly DeckInfo[]
 }
 
-export type DjMessage = LiveMeta | { readonly type: 'end' } | { readonly type: 'full' }
+/** Emoji reactions listeners can send; anything else is dropped. */
+export const REACTIONS = ['🔥', '🙌', '❤️', '😮', '🕺'] as const
+export type Reaction = (typeof REACTIONS)[number]
+
+/** A listener reacted (relayed by the DJ to everyone else). */
+export interface ReactMessage {
+  readonly type: 'react'
+  readonly emoji: Reaction
+}
+
+export type DjMessage = LiveMeta | ReactMessage | { readonly type: 'end' } | { readonly type: 'full' }
+
+/** Messages from a listener to the DJ. */
+export type ListenerMessage = ReactMessage
+
+export function parseListenerMessage(raw: unknown): ListenerMessage | null {
+  if (!raw || typeof raw !== 'object') return null
+  const m = raw as Record<string, unknown>
+  if (m.type === 'react' && REACTIONS.includes(m.emoji as Reaction)) return { type: 'react', emoji: m.emoji as Reaction }
+  return null
+}
 
 const str = (v: unknown, max: number) => (typeof v === 'string' ? v.slice(0, max) : '')
 
@@ -27,6 +47,7 @@ export function parseDjMessage(raw: unknown): DjMessage | null {
   if (!raw || typeof raw !== 'object') return null
   const m = raw as Record<string, unknown>
   if (m.type === 'end' || m.type === 'full') return { type: m.type }
+  if (m.type === 'react') return parseListenerMessage(m)
   if (m.type !== 'meta') return null
   const decks = Array.isArray(m.decks) ? m.decks.slice(0, 2) : []
   return {

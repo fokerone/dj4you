@@ -1,3 +1,4 @@
+import { ReactionCounts } from './Reactions'
 import { useT } from '../i18n'
 import { useEffect, useRef, useState } from 'react'
 import { engine } from '../audio/engine'
@@ -120,6 +121,7 @@ export function LiveSheet({ open, onClose }: { open: boolean; onClose: () => voi
                   <span>{t(live.listeners === 1 ? 'listener' : 'listeners')}</span>
                 </div>
               </div>
+              <ReactionCounts counts={live.reactionCounts} />
 
               <div className="live-share">
                 <QrCode text={link} label={t('QR code for your listen link')} />

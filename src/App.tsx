@@ -1,3 +1,5 @@
+import { LiveReactions } from './components/LiveReactions'
+import { AutoButton } from './components/AutoButton'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Deck } from './audio/deck'
 import { engine } from './audio/engine'
@@ -187,6 +189,7 @@ export default function App() {
               <>
                 <RecButton className="rec-in-mixer" onSaved={onRecSaved} />
                 <LiveButton className="live-in-mixer" onOpen={openLive} />
+                <AutoButton className="auto-in-mixer" />
               </>
             } />
         </div>
@@ -201,6 +204,7 @@ export default function App() {
       </main>
 
       <LiveSheet open={liveOpen} onClose={closeLive} />
+      <LiveReactions />
       <TutorialCard />
       <HintBar />
       <Notes />

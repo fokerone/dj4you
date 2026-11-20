@@ -6,9 +6,9 @@ import { HOT_CUE_COLORS } from './colors'
 import { Knob } from './Knob'
 
 const LOOP_SIZES = [1, 2, 4, 8] as const
-const MODES = ['cue', 'loop', 'fx'] as const
+const MODES = ['cue', 'loop', 'fx', 'moves'] as const
 type Mode = (typeof MODES)[number]
-const MODE_LABEL: Record<Mode, string> = { cue: 'Hot Cue', loop: 'Loop', fx: 'FX' }
+const MODE_LABEL: Record<Mode, string> = { cue: 'Hot Cue', loop: 'Loop', fx: 'FX', moves: 'Moves' }
 const LONG_PRESS_MS = 500
 
 /** Performance pads: one row of 4, switchable between hot cues, loops and FX. */
@@ -88,9 +88,77 @@ export function PadRow({ deck, state, ready }: { deck: Deck; state: DeckState; r
             </div>
           </>
         )}
+
+        {mode === 'moves' && (
+          <>
+            <button className="pad pad-move" disabled={!state.playing} onClick={() => deck.brake()} title={t('The track slows to a stop, like a turntable switched off')}>
+              {t('Brake')}
+              <small>{t('tap')}</small>
+            </button>
+            <button className="pad pad-move" disabled={!state.playing} onClick={() => deck.spinback()} title={t('Spin the record backwards and stop')}>
+              {t('Spinback')}
+              <small>{t('tap')}</small>
+            </button>
+            <RollPad deck={deck} disabled={!state.playing || state.bpm === null} />
+            <button
+              className={`pad pad-fx ${state.flangerOn ? 'is-on' : ''}`}
+              aria-pressed={state.flangerOn}
+              onClick={() => deck.toggleFlanger()}
+            >
+              {t('Flanger')}
+            </button>
+          </>
+        )}
       </div>
     </div>
   )
+}
+
+const ROLL_SIZES = [0.5, 0.25, 0.125] as const
+
+/** Hold to roll; tap the size to change it. */
+function RollPad({ deck, disabled }: { deck: Deck; disabled: boolean }) {
+  const t = useT()
+  const [size, setSize] = useState<(typeof ROLL_SIZES)[number]>(0.25)
+  const [on, setOn] = useState(false)
+  const end = () => {
+    if (!on) return
+    setOn(false)
+    deck.rollEnd()
+  }
+  return (
+    <button
+      className={`pad pad-move pad-roll ${on ? 'is-on' : ''}`}
+      disabled={disabled}
+      title={t('Hold to repeat a slice in time; let go and the track carries on where it would be')}
+      onPointerDown={(e) => {
+        if ((e.target as HTMLElement).closest('.roll-size')) return
+        e.currentTarget.setPointerCapture(e.pointerId)
+        setOn(true)
+        deck.rollStart(size)
+      }}
+      onPointerUp={end}
+      onPointerCancel={end}
+      onContextMenu={(e) => e.preventDefault()}
+    >
+      Roll
+      <small
+        className="roll-size"
+        role="button"
+        aria-label={t('Roll size {s} beat: tap to change', { s: rollLabel(size) })}
+        onClick={(e) => {
+          e.stopPropagation()
+          setSize(ROLL_SIZES[(ROLL_SIZES.indexOf(size) + 1) % ROLL_SIZES.length])
+        }}
+      >
+        {rollLabel(size)} ↻
+      </small>
+    </button>
+  )
+}
+
+function rollLabel(s: number): string {
+  return s === 0.5 ? '1/2' : s === 0.25 ? '1/4' : '1/8'
 }
 
 function HotCuePad({ index, deck, position, disabled }: { index: number; deck: Deck; position: number | null; disabled: boolean }) {

@@ -4,6 +4,8 @@
  * or — as a fallback — on the main thread.
  */
 
+import { detectKey, type Key } from './key'
+
 export interface Analysis {
   /** Whole-track overview peaks, 0..1 */
   peaks: Float32Array<ArrayBuffer>
@@ -16,6 +18,10 @@ export interface Analysis {
   bpm: number | null
   /** Time of the first beat-grid line in seconds (0 <= firstBeat < 60/bpm) */
   firstBeat: number
+  /** Musical key (0–11 major, 12–23 minor), or null if unclear */
+  key: Key | null
+  /** Where the music starts: the first beat after any leading silence (s) */
+  cueAt: number
 }
 
 export interface Bands {
@@ -48,7 +54,30 @@ export function analyze(mono: Float32Array, sampleRate: number): Analysis {
   const detail = normalize(binPeaks(mono, detailBins))
   const bands = bandPeaks(mono, sampleRate, detailBins)
   const { bpm, firstBeat } = detectTempo(mono, sampleRate)
-  return { peaks, detail, detailRate: DETAIL_RATE, bands, bpm, firstBeat }
+  const key = detectKey(mono, sampleRate)
+  const cueAt = findCue(mono, sampleRate, bpm, firstBeat)
+  return { peaks, detail, detailRate: DETAIL_RATE, bands, bpm, firstBeat, key, cueAt }
+}
+
+/**
+ * Auto cue: skip leading silence. The music starts where the level first
+ * reaches −30 dB of the track's peak; with a beat grid the cue snaps to the
+ * beat there, so pressing play starts right on the first beat.
+ */
+export function findCue(mono: Float32Array, sampleRate: number, bpm: number | null, firstBeat: number): number {
+  let peak = 0
+  for (let i = 0; i < mono.length; i++) peak = Math.max(peak, Math.abs(mono[i]))
+  if (peak === 0) return 0
+  const threshold = peak * 0.0316
+  let i = 0
+  while (i < mono.length && Math.abs(mono[i]) < threshold) i++
+  const start = i / sampleRate
+  if (start < 0.05 || i >= mono.length) return 0
+  if (bpm === null) return Math.max(0, start - 0.01)
+  const beatLen = 60 / bpm
+  const nearest = firstBeat + Math.round((start - firstBeat) / beatLen) * beatLen
+  // Snap only when the sound starts close to a beat; otherwise just before it.
+  return Math.abs(nearest - start) <= beatLen * 0.2 ? Math.max(0, nearest) : Math.max(0, start - 0.01)
 }
 
 // ---------------------------------------------------------------- peaks

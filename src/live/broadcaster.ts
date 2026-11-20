@@ -4,7 +4,7 @@ import { crossfaderGains } from '../audio/mixer'
 import { Store } from '../audio/store'
 import { t } from '../i18n'
 import { LOBBY_URL, MAX_LISTENERS, peerOptions } from './config'
-import type { DjMessage, LiveMeta } from './protocol'
+import { type DjMessage, type LiveMeta, parseListenerMessage, type Reaction } from './protocol'
 import { musicSdp, raiseBitrate } from './sdp'
 
 export type LiveStatus = 'idle' | 'connecting' | 'live' | 'error'
@@ -21,12 +21,22 @@ export interface BroadcastState {
   readonly lobbyError: boolean
   readonly startedAt: number
   readonly error: string | null
+  /** Reactions received this set, per emoji */
+  readonly reactionCounts: Readonly<Partial<Record<Reaction, number>>>
+  /** Latest reactions, for the floating animation (id increases) */
+  readonly reactionFeed: readonly { readonly id: number; readonly emoji: Reaction }[]
 }
 
 interface Listener {
   conn: DataConnection
   call: MediaConnection | null
+  /** Last reaction time (ms), for rate limiting */
+  lastReact: number
 }
+
+/** One reaction per listener per this many ms; extra ones are ignored. */
+const REACT_GAP_MS = 350
+const FEED_SIZE = 24
 
 /**
  * Go live: every listener opens a data connection to the DJ's peer id; the
@@ -53,6 +63,8 @@ export class Broadcaster extends Store<BroadcastState> {
       lobbyError: false,
       startedAt: 0,
       error: null,
+      reactionCounts: {},
+      reactionFeed: [],
     })
     this.engine = engine
   }
@@ -68,6 +80,8 @@ export class Broadcaster extends Store<BroadcastState> {
       lobbyError: false,
       error: null,
       listeners: 0,
+      reactionCounts: {},
+      reactionFeed: [],
     })
     this.openPeer(0)
   }
@@ -156,7 +170,7 @@ export class Broadcaster extends Store<BroadcastState> {
       const stream = this.engine.recorder.stream
       for (const t of stream.getAudioTracks()) (t as MediaStreamTrack & { contentHint: string }).contentHint = 'music'
       const call = this.peer.call(conn.peer, stream, { sdpTransform: musicSdp })
-      const entry: Listener = { conn, call }
+      const entry: Listener = { conn, call, lastReact: 0 }
       this.audience.set(conn.peer, entry)
       call.peerConnection?.addEventListener('connectionstatechange', () => {
         const pc = call.peerConnection
@@ -168,8 +182,29 @@ export class Broadcaster extends Store<BroadcastState> {
       this.sendMeta()
       void this.announce()
     })
+    conn.on('data', (raw) => {
+      const msg = parseListenerMessage(raw)
+      const who = this.audience.get(conn.peer)
+      if (!msg || !who) return
+      const now = Date.now()
+      if (now - who.lastReact < REACT_GAP_MS) return
+      who.lastReact = now
+      this.addReaction(msg.emoji)
+      // Everyone else sees it float by too.
+      for (const [peer, l] of this.audience) {
+        if (peer !== conn.peer && l.conn.open) void Promise.resolve(l.conn.send(msg)).catch(() => undefined)
+      }
+    })
     conn.on('close', () => this.dropListener(conn.peer))
     conn.on('error', () => this.dropListener(conn.peer))
+  }
+
+  private feedId = 0
+
+  private addReaction(emoji: Reaction): void {
+    const counts = { ...this.state.reactionCounts, [emoji]: (this.state.reactionCounts[emoji] ?? 0) + 1 }
+    const feed = [...this.state.reactionFeed, { id: ++this.feedId, emoji }].slice(-FEED_SIZE)
+    this.set({ reactionCounts: counts, reactionFeed: feed })
   }
 
   private dropListener(peerId: string): void {

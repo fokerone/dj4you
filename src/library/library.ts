@@ -1,10 +1,12 @@
 import type { Analyzed, Deck } from '../audio/deck'
 import { DEMOS, renderDemo } from '../audio/demo'
 import { Store } from '../audio/store'
+import { analyzeBuffer } from '../audio/analyzer'
+import { engine } from '../audio/engine'
 import { locale, t } from '../i18n'
 import { idb, RECORDINGS, TRACKS } from './idb'
-import { prefs } from './prefs'
-import { jamendoAudioUrl, type JamendoTrack, rememberBpm } from './jamendo'
+import { prefs, refKey, type TrackRef } from './prefs'
+import { jamendoAudioUrl, type JamendoTrack, rememberInfo } from './jamendo'
 
 export interface TrackMeta {
   readonly id: string
@@ -13,6 +15,8 @@ export interface TrackMeta {
   readonly addedAt: number
   readonly duration?: number
   readonly bpm?: number | null
+  /** Musical key (see audio/key.ts) */
+  readonly key?: number | null
 }
 
 export interface RecordingMeta {
@@ -66,6 +70,7 @@ export class Library extends Store<LibraryState> {
         tracks: tracks.map(strip).sort((a, b) => b.addedAt - a.addedAt),
         recordings: recordings.map(strip).sort((a, b) => b.createdAt - a.createdAt),
       })
+      void this.analyzeMissing()
     } catch {
       this.set({ ready: true, unavailable: true })
     }
@@ -111,7 +116,7 @@ export class Library extends Store<LibraryState> {
   /** Stream a Jamendo track onto a deck, credited as "Title — Artist". */
   loadJamendo(track: JamendoTrack, deck: Deck): Promise<void> {
     remember(deck, { type: 'jamendo', track })
-    return deck.loadUrl(jamendoAudioUrl(track.id), `${track.name} — ${track.artist}`, (a) => rememberBpm(track.id, a.bpm))
+    return deck.loadUrl(jamendoAudioUrl(track.id), `${track.name} — ${track.artist}`, (a) => rememberInfo(track.id, a.bpm, a.key))
   }
 
   async loadTrack(id: string, deck: Deck): Promise<void> {
@@ -159,6 +164,66 @@ export class Library extends Store<LibraryState> {
       }),
     )
     return any
+  }
+
+  private scanning = false
+
+  /**
+   * Tracks added without being played (or saved by an older version) have no
+   * tempo / key yet: analyse them in the background, one at a time, so the
+   * library can sort by BPM and suggest what mixes well.
+   */
+  async analyzeMissing(): Promise<void> {
+    if (this.scanning) return
+    this.scanning = true
+    try {
+      // Give a track that is being loaded onto a deck time to be analysed there.
+      await new Promise((r) => setTimeout(r, 2500))
+      for (;;) {
+        const next = this.state.tracks.find((t) => t.key === undefined)
+        if (!next) break
+        const rec = await idb.get<TrackRecord>(TRACKS, next.id).catch(() => undefined)
+        let a: Analyzed = { bpm: next.bpm ?? null, key: null, duration: next.duration ?? 0 }
+        if (rec) {
+          try {
+            const buffer = await engine.ctx.decodeAudioData(await rec.blob.arrayBuffer())
+            const r = await analyzeBuffer(buffer)
+            a = { bpm: r.bpm, key: r.key, duration: buffer.duration }
+          } catch {
+            /* undecodable: mark as done (no key) */
+          }
+        }
+        await this.updateTrack(next.id, a)
+        // Not found in the database: stop rather than loop.
+        if (!rec) this.set({ tracks: this.state.tracks.map((t) => (t.id === next.id ? { ...t, key: null } : t)) })
+      }
+    } finally {
+      this.scanning = false
+    }
+  }
+
+  /** Load any library reference (own track, demo, Jamendo) onto a deck. */
+  loadRef(ref: TrackRef, deck: Deck): Promise<void> {
+    if (ref.type === 'track') return this.loadTrack(ref.id, deck)
+    if (ref.type === 'jamendo') return this.loadJamendo(ref.track, deck)
+    const i = DEMOS.findIndex((d) => d.name === ref.name)
+    return i >= 0 ? this.loadDemo(i, deck) : Promise.resolve()
+  }
+
+  /** Take the first playable track off the queue and load it; false if empty. */
+  loadNext(deck: Deck): boolean {
+    for (const ref of prefs.getSnapshot().queue) {
+      prefs.dequeue(refKey(ref))
+      if (ref.type === 'track' && !this.state.tracks.some((t) => t.id === ref.id)) continue
+      void this.loadRef(ref, deck)
+      return true
+    }
+    return false
+  }
+
+  /** refKey of what each deck holds (to leave it out of suggestions). */
+  loadedIds(): Set<string> {
+    return new Set(Object.values(loaded))
   }
 
   async removeTrack(id: string): Promise<void> {
@@ -211,8 +276,8 @@ export class Library extends Store<LibraryState> {
   private async updateTrack(id: string, a: Analyzed): Promise<void> {
     const rec = await idb.get<TrackRecord>(TRACKS, id).catch(() => undefined)
     if (!rec) return
-    await idb.put(TRACKS, { ...rec, bpm: a.bpm, duration: a.duration }).catch(() => undefined)
-    this.set({ tracks: this.state.tracks.map((t) => (t.id === id ? { ...t, bpm: a.bpm, duration: a.duration } : t)) })
+    await idb.put(TRACKS, { ...rec, bpm: a.bpm, key: a.key, duration: a.duration }).catch(() => undefined)
+    this.set({ tracks: this.state.tracks.map((t) => (t.id === id ? { ...t, bpm: a.bpm, key: a.key, duration: a.duration } : t)) })
   }
 
   private async updateUsage(): Promise<void> {
@@ -229,7 +294,10 @@ type DeckSource = { type: 'track'; id: string } | { type: 'demo'; index: number 
 const DECKS_KEY = 'dj4you.decks'
 
 /** Remember what's on each deck so the next visit opens where you left off. */
+const loaded: Record<string, string> = {}
+
 function remember(deck: Deck, src: DeckSource): void {
+  loaded[deck.id] = src.type === 'track' ? `t:${src.id}` : src.type === 'demo' ? `d:${DEMOS[src.index]?.name}` : `j:${src.track.id}`
   try {
     const saved = JSON.parse(localStorage.getItem(DECKS_KEY) ?? '{}') as Record<string, DeckSource>
     saved[deck.id] = src

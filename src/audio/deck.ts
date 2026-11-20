@@ -1,3 +1,5 @@
+import type { Key } from './key'
+import { matchTempo } from './tempo'
 import type { Bands } from './analysis'
 import { analyzeBuffer } from './analyzer'
 import { faderCurve } from './curves'
@@ -31,6 +33,7 @@ export const HOT_CUES = 4
 /** Reported once a loaded track has been analysed. */
 export interface Analyzed {
   readonly bpm: number | null
+  readonly key: Key | null
   readonly duration: number
 }
 
@@ -66,6 +69,8 @@ export interface DeckState {
   readonly bpm: number | null
   /** First beat-grid line, seconds */
   readonly firstBeat: number
+  /** Musical key (see key.ts), or null if unclear */
+  readonly key: Key | null
   /** EQ knobs, -1 (kill) .. 0 (flat) .. 1 (+6 dB) */
   readonly eq: Readonly<Record<EqBand, number>>
   /** Filter knob: -1 low-pass .. 0 off .. 1 high-pass */
@@ -73,6 +78,7 @@ export interface DeckState {
   readonly echoOn: boolean
   readonly echoBeats: EchoBeats
   readonly reverbOn: boolean
+  readonly flangerOn: boolean
   /** Effect send level, 0..1 */
   readonly fxAmount: number
   /** Hot cue positions (seconds) or null for empty slots */
@@ -114,6 +120,11 @@ export class Deck extends Store<DeckState> {
   /** Temporary jog-wheel tempo bend, e.g. 0.05 = 5% faster */
   private bend = 0
   private previewing = false
+  /** Brake in progress: the play head slows linearly to a stop. */
+  private braking: { t0: number; dur: number; rate: number; pos0: number; timer: number } | null = null
+  /** Beat roll in progress: where the track would be without the roll. */
+  private roll: { pos0: number; ctx0: number; rate: number; prevLoop: Loop | null } | null = null
+  private readonly flangerSend: GainNode
   private loadToken = 0
 
   constructor(engine: AudioEngine, id: DeckId) {
@@ -135,11 +146,13 @@ export class Deck extends Store<DeckState> {
       bands: null,
       bpm: null,
       firstBeat: 0,
+      key: null,
       eq: { low: 0, mid: 0, high: 0 },
       filter: 0,
       echoOn: false,
       echoBeats: 0.75,
       reverbOn: false,
+      flangerOn: false,
       fxAmount: 0.5,
       hotCues: Array<number | null>(HOT_CUES).fill(null),
       loop: null,
@@ -204,6 +217,22 @@ export class Deck extends Store<DeckState> {
     convolver.buffer = createImpulseResponse(ctx)
     post.connect(this.reverbSend).connect(convolver).connect(this.output)
 
+    // Flanger: a short delay swept by a slow LFO, mixed in parallel.
+    this.flangerSend = ctx.createGain()
+    this.flangerSend.gain.value = 0
+    const flDelay = ctx.createDelay(0.03)
+    flDelay.delayTime.value = 0.004
+    const lfo = ctx.createOscillator()
+    lfo.frequency.value = 0.25
+    const depth = ctx.createGain()
+    depth.gain.value = 0.0032
+    lfo.connect(depth).connect(flDelay.delayTime)
+    lfo.start()
+    const flFeedback = ctx.createGain()
+    flFeedback.gain.value = 0.55
+    post.connect(this.flangerSend).connect(flDelay).connect(this.output)
+    flDelay.connect(flFeedback).connect(flDelay)
+
     this.output.gain.value = faderCurve(this.state.volume)
     this.updateEchoTime(true)
   }
@@ -223,7 +252,10 @@ export class Deck extends Store<DeckState> {
   /** Current play-head position in seconds of track time. */
   get position(): number {
     if (!this.state.playing) return this.startOffset
-    let p = this.startOffset + (this.engine.ctx.currentTime - this.startCtxTime) * this.playRate
+    const b = this.braking
+    let p = b
+      ? b.pos0 + b.rate * brakeTravel(Math.min(this.engine.ctx.currentTime - b.t0, b.dur), b.dur)
+      : this.startOffset + (this.engine.ctx.currentTime - this.startCtxTime) * this.playRate
     const loop = this.state.loop
     if (loop && p >= loop.end) p = loop.start + ((p - loop.start) % (loop.end - loop.start))
     return Math.min(p, this.state.duration)
@@ -310,6 +342,7 @@ export class Deck extends Store<DeckState> {
       bands: null,
       bpm: null,
       firstBeat: 0,
+      key: null,
       hotCues: Array<number | null>(HOT_CUES).fill(null),
       loop: null,
       syncLock: false,
@@ -323,8 +356,14 @@ export class Deck extends Store<DeckState> {
     void analyzeBuffer(buffer).then((a) => {
       if (token !== this.loadToken) return
       // Before the state change, so anything that re-renders on it sees the result.
-      onAnalyzed?.({ bpm: a.bpm, duration: buffer.duration })
+      onAnalyzed?.({ bpm: a.bpm, key: a.key, duration: buffer.duration })
+      // Auto cue: if the play head is still where loading left it, park it
+      // where the music starts.
+      const untouched = !this.state.playing && this.startOffset === 0 && this.state.cuePoint === 0
+      if (untouched && a.cueAt > 0) this.startOffset = a.cueAt
       this.set({
+        cuePoint: untouched ? a.cueAt : this.state.cuePoint,
+        key: a.key,
         analyzing: false,
         peaks: a.peaks,
         detail: a.detail,
@@ -530,16 +569,7 @@ export class Deck extends Store<DeckState> {
 
   /** Best tempo match: pitch % and our beats per other-deck beat (1, 2 or 0.5). */
   private tempoMatch(other: Deck): { pitch: number; ratio: 1 | 2 | 0.5 } | null {
-    const target = other.effectiveBpm
-    const own = this.state.bpm
-    if (target === null || own === null) return null
-    const ratios = [1, 2, 0.5] as const
-    let best: { pitch: number; ratio: 1 | 2 | 0.5 } | null = null
-    for (const ratio of ratios) {
-      const pitch = ((target * ratio) / own - 1) * 100
-      if (!best || Math.abs(pitch) < Math.abs(best.pitch)) best = { pitch, ratio }
-    }
-    return best && Math.abs(best.pitch) <= syncReach(this.state.pitchRange) + 1e-9 ? best : null
+    return matchTempo(this.state.bpm, other.effectiveBpm, syncReach(this.state.pitchRange))
   }
 
   // ---- EQ / filter / FX ----
@@ -574,6 +604,94 @@ export class Deck extends Store<DeckState> {
     this.updateEchoTime()
   }
 
+  toggleFlanger(): void {
+    this.set({ flangerOn: !this.state.flangerOn })
+    this.updateSends()
+  }
+
+  // ---- performance moves ----
+
+  /** Turntable brake: the track slows to a stop over `dur` seconds, then pauses. */
+  brake(dur = 1.2): void {
+    if (!this.state.playing || !this.source || this.braking) return
+    this.exitRoll()
+    this.reanchor()
+    const ctx = this.engine.ctx
+    const t = ctx.currentTime
+    const rate = this.playRate
+    const p = this.source.playbackRate
+    p.cancelScheduledValues(t)
+    p.setValueAtTime(rate, t)
+    p.linearRampToValueAtTime(0.0001, t + dur)
+    const timer = window.setTimeout(() => {
+      const b = this.braking
+      if (!b) return
+      this.braking = null
+      const end = b.pos0 + b.rate * brakeTravel(b.dur, b.dur)
+      this.stopSource()
+      this.startOffset = Math.min(end, this.state.duration)
+      this.previewing = false
+      this.set({ playing: false })
+    }, dur * 1000)
+    this.braking = { t0: t, dur, rate, pos0: this.startOffset, timer }
+  }
+
+  /** Spinback: the record is spun backwards and stops (then the deck is paused). */
+  spinback(dur = 1.4): void {
+    if (!this.buffer || !this.state.playing) return
+    this.exitRoll()
+    const pos = this.position
+    this.pause()
+    const startRate = 3
+    const travel = Math.min(pos, (startRate * dur) / 2)
+    const sr = this.buffer.sampleRate
+    const frames = Math.floor(travel * sr)
+    if (frames < sr * 0.05) return
+    const ctx = this.engine.ctx
+    const rev = ctx.createBuffer(this.buffer.numberOfChannels, frames, sr)
+    const startFrame = Math.floor((pos - travel) * sr)
+    for (let c = 0; c < rev.numberOfChannels; c++) {
+      const src = this.buffer.getChannelData(c).subarray(startFrame, startFrame + frames)
+      const dst = rev.getChannelData(c)
+      for (let i = 0; i < frames; i++) dst[i] = src[frames - 1 - i]
+    }
+    const node = ctx.createBufferSource()
+    node.buffer = rev
+    const t = ctx.currentTime
+    node.playbackRate.setValueAtTime(startRate, t)
+    node.playbackRate.linearRampToValueAtTime(0.0001, t + dur)
+    node.connect(this.input)
+    node.start(t)
+    node.stop(t + dur + 0.05)
+    node.onended = () => node.disconnect()
+    this.startOffset = Math.max(0, pos - travel)
+    this.set({})
+  }
+
+  /**
+   * Beat roll (hold): repeat a slice of `beats` beats while held; on release
+   * the track carries on where it would have been, as if it never stopped.
+   */
+  rollStart(beats = 0.25): void {
+    if (!this.state.playing || this.state.bpm === null || this.roll) return
+    this.roll = { pos0: this.position, ctx0: this.engine.ctx.currentTime, rate: this.playRate, prevLoop: this.state.loop }
+    this.exitLoop()
+    this.toggleLoop(beats)
+  }
+
+  rollEnd(): void {
+    const r = this.roll
+    if (!r) return
+    this.roll = null
+    const target = r.pos0 + (this.engine.ctx.currentTime - r.ctx0) * r.rate
+    this.exitLoop()
+    if (this.state.playing) this.seek(Math.min(target, this.state.duration))
+  }
+
+  private exitRoll(): void {
+    if (this.roll) this.rollEnd()
+  }
+
   setFxAmount(v: number): void {
     this.set({ fxAmount: clamp(v, 0, 1) })
     this.updateSends()
@@ -585,6 +703,7 @@ export class Deck extends Store<DeckState> {
     // Turning an effect off closes the send; its tail keeps ringing out.
     this.echoSend.gain.setTargetAtTime(echoOn ? fxAmount : 0, t, 0.02)
     this.reverbSend.gain.setTargetAtTime(reverbOn ? fxAmount * 0.8 : 0, t, 0.02)
+    this.flangerSend.gain.setTargetAtTime(this.state.flangerOn ? 0.35 + fxAmount * 0.55 : 0, t, 0.02)
   }
 
   /** Echo time follows the heard tempo (fallback 120 BPM). */
@@ -708,6 +827,10 @@ export class Deck extends Store<DeckState> {
   }
 
   private stopSource(): void {
+    if (this.braking) {
+      window.clearTimeout(this.braking.timer)
+      this.braking = null
+    }
     const src = this.source
     if (!src) return
     this.source = null
@@ -719,6 +842,11 @@ export class Deck extends Store<DeckState> {
     }
     src.disconnect()
   }
+}
+
+/** Distance covered after `e` s of a linear slow-down from rate 1 to 0 over `dur` s. */
+function brakeTravel(e: number, dur: number): number {
+  return e - (e * e) / (2 * dur)
 }
 
 function clamp(v: number, lo: number, hi: number): number {

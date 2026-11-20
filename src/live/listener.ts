@@ -1,7 +1,7 @@
 import Peer, { type DataConnection, type MediaConnection } from 'peerjs'
 import { Store } from '../audio/store'
 import { peerOptions } from './config'
-import { type LiveMeta, parseDjMessage } from './protocol'
+import { type LiveMeta, parseDjMessage, type Reaction } from './protocol'
 import { musicSdp } from './sdp'
 
 export type ListenStatus =
@@ -20,6 +20,8 @@ export interface ListenState {
   readonly status: ListenStatus
   readonly meta: LiveMeta | null
   readonly stream: MediaStream | null
+  /** Reactions floating by (yours and other listeners'), id increases */
+  readonly reactionFeed: readonly { readonly id: number; readonly emoji: Reaction; readonly mine: boolean }[]
 }
 
 /** Join a DJ's set by id and receive the audio stream plus live info. */
@@ -30,7 +32,7 @@ export class LiveListener extends Store<ListenState> {
   private timeout = 0
 
   constructor() {
-    super({ status: 'idle', meta: null, stream: null })
+    super({ status: 'idle', meta: null, stream: null, reactionFeed: [] })
   }
 
   connect(djId: string): void {
@@ -51,6 +53,7 @@ export class LiveListener extends Store<ListenState> {
         const msg = parseDjMessage(raw)
         if (!msg) return
         if (msg.type === 'meta') this.set({ meta: msg })
+        else if (msg.type === 'react') this.pushReaction(msg.emoji, false)
         else this.fail(msg.type === 'end' ? 'ended' : 'full')
       })
       conn.on('close', () => {
@@ -75,6 +78,22 @@ export class LiveListener extends Store<ListenState> {
       const type = (err as { type?: string }).type
       this.fail(type === 'peer-unavailable' ? 'notfound' : 'error')
     })
+  }
+
+  private feedId = 0
+  private lastSent = 0
+
+  /** Send a reaction to the DJ (and show it here right away). */
+  react(emoji: Reaction): void {
+    const now = Date.now()
+    if (!this.conn?.open || now - this.lastSent < 400) return
+    this.lastSent = now
+    void Promise.resolve(this.conn.send({ type: 'react', emoji })).catch(() => undefined)
+    this.pushReaction(emoji, true)
+  }
+
+  private pushReaction(emoji: Reaction, mine: boolean): void {
+    this.set({ reactionFeed: [...this.state.reactionFeed, { id: ++this.feedId, emoji, mine }].slice(-24) })
   }
 
   disconnect(): void {

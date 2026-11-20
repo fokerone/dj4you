@@ -3,8 +3,11 @@ import type { Deck } from '../audio/deck'
 import { engine } from '../audio/engine'
 import { useT } from '../i18n'
 import { useStore } from '../hooks/useEngine'
-import { FavButton } from './FavButton'
-import { GENRES, jamendoAvailable, type JamendoTrack, knownBpms, searchJamendo } from '../library/jamendo'
+import { ScrollRow } from './ScrollRow'
+import { GENRES, jamendoAvailable, type JamendoTrack, knownInfo, searchJamendo } from '../library/jamendo'
+import { resolveRef } from '../library/items'
+import { heardKey, mixScore } from '../audio/key'
+import { ItemRow } from './ItemRow'
 
 type Status = 'idle' | 'loading' | 'ready' | 'error'
 
@@ -119,8 +122,10 @@ export function JamendoBrowser({ onPick }: { onPick: (track: JamendoTrack, deck:
     )
   }
 
-  const [a, b] = engine.decks
-  const bpms = knownBpms()
+  const info = knownInfo()
+  const main = engine.mainDeck()
+  const mainId = main?.getSnapshot().id ?? ''
+  const now = main?.getSnapshot().trackName ? { bpm: main.effectiveBpm, key: heardKey(main.getSnapshot().key, main.rate) } : null
 
   return (
     <>
@@ -134,13 +139,13 @@ export function JamendoBrowser({ onPick }: { onPick: (track: JamendoTrack, deck:
           aria-label={t('Search free music')}
           onChange={(e) => setQuery(e.target.value)}
         />
-        <div ref={chipsRef} className="help-nav" role="radiogroup" aria-label={t('Genre')}>
+        <ScrollRow ref={chipsRef} className="help-nav" role="radiogroup" label={t('Genre')}>
           {GENRES.map((g) => (
             <button key={g.id || 'all'} role="radio" aria-checked={genre === g.id} className={`help-chip ${genre === g.id ? 'is-on' : ''}`} onClick={() => setGenre(g.id)}>
               {g.id ? t(g.label) : t('All')}
             </button>
           ))}
-        </div>
+        </ScrollRow>
       </div>
 
       <div ref={bodyRef} className="sheet-body jam-body" aria-busy={status === 'loading'}>
@@ -172,37 +177,20 @@ export function JamendoBrowser({ onPick }: { onPick: (track: JamendoTrack, deck:
 
         {tracks.length > 0 && (
           <ul className="lib-list">
-            {tracks.map((tr) => (
-              <li key={tr.id} className="lib-row jam-row">
-                {tr.image ? <img className="jam-cover" src={tr.image} alt="" loading="lazy" width={44} height={44} /> : <span className="jam-cover" aria-hidden />}
-                <div className="lib-info">
-                  <div className="lib-title" title={tr.name}>
-                    {tr.name}
-                  </div>
-                  <div className="lib-meta">
-                    {tr.artist} · {formatDuration(tr.duration)} ·{' '}
-                    {bpms[tr.id] ? (
-                      <span className="jam-bpm">{bpms[tr.id].toFixed(bpms[tr.id] % 1 ? 1 : 0)} BPM</span>
-                    ) : (
-                      tr.speed && <span className="jam-speed" title={t('Jamendo gives no BPM: load the track and DJ4YOU measures it')}>{t(SPEED_LABEL[tr.speed])}</span>
-                    )}
-                    {(bpms[tr.id] || tr.speed) && ' · '}
-                    <a className="jam-license" href={tr.licenseUrl || tr.pageUrl} target="_blank" rel="noreferrer" title={t('License terms')}>
-                      {tr.license}
-                    </a>
-                  </div>
-                </div>
-                <div className="lib-actions">
-                  <FavButton fav={{ type: 'jamendo', track: tr }} title={tr.name} />
-                  <button className="btn btn-small btn-to-a" onClick={() => onPick(tr, a)} aria-label={t('Load {title} on deck {id}', { title: tr.name, id: 'A' })}>
-                    A
-                  </button>
-                  <button className="btn btn-small btn-to-b" onClick={() => onPick(tr, b)} aria-label={t('Load {title} on deck {id}', { title: tr.name, id: 'B' })}>
-                    B
-                  </button>
-                </div>
-              </li>
-            ))}
+            {tracks.map((tr) => {
+              const base = resolveRef({ type: 'jamendo', track: tr }, [], info)!
+              const item = { ...base, tempoHint: tr.speed ? t(SPEED_LABEL[tr.speed]) : undefined }
+              const fits = now?.bpm ? mixScore(now, item, 6) : null
+              return (
+                <ItemRow
+                  key={tr.id}
+                  item={item}
+                  onDeck={(deck) => onPick(tr, deck)}
+                  cover={tr.image ? <img className="jam-cover" src={tr.image} alt="" loading="lazy" width={44} height={44} /> : <span className="jam-cover" aria-hidden />}
+                  note={fits !== null && fits > 0.2 ? <span className="mix-reason">✓ {t('Mixes with {id}', { id: mainId })}</span> : undefined}
+                />
+              )
+            })}
           </ul>
         )}
 
@@ -232,7 +220,3 @@ const SPEED_LABEL: Record<string, string> = {
   veryhigh: 'very fast',
 }
 
-function formatDuration(s: number): string {
-  const m = Math.floor(s / 60)
-  return `${m}:${String(Math.floor(s % 60)).padStart(2, '0')}`
-}

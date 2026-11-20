@@ -25,6 +25,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx oxlint src
+      # BPM / key detection, auto cue, SYNC maths and the live protocol.
+      - run: npm test
       # Optional: set a repository variable SIGNAL_URL (Settings → Secrets and
       # variables → Actions → Variables) to your live server's URL to enable
       # the public "Live now" lobby. Without it, share links still work.

@@ -1,9 +1,11 @@
 import { useT } from '../i18n'
 import { useEffect, useRef, useState } from 'react'
 import { type Deck, PITCH_RANGES, syncReach } from '../audio/deck'
+import { camelot, heardKey, type Key, keyName } from '../audio/key'
 import { useAnimationFrame, useStore } from '../hooks/useEngine'
 import { library } from '../library/library'
 import { prefs } from '../library/prefs'
+import { resolveRef } from '../library/items'
 import { audioAccept, isAudioFile } from '../library/audioFiles'
 import { coach } from '../game'
 import { Fader } from './Fader'
@@ -20,6 +22,9 @@ export function DeckView({ deck, other, onOpenLibrary }: { deck: Deck; other: De
   const elapsedRef = useRef<HTMLSpanElement>(null)
   const remainRef = useRef<HTMLSpanElement>(null)
   const sectionRef = useRef<HTMLElement>(null)
+  const { queue } = useStore(prefs)
+  const lib = useStore(library)
+  const nextTitle = queue.length ? (resolveRef(queue[0], lib.tracks)?.title ?? '') : ''
   const [dragOver, setDragOver] = useState(false)
 
   useAnimationFrame(() => {
@@ -81,7 +86,7 @@ export function DeckView({ deck, other, onOpenLibrary }: { deck: Deck; other: De
             </span>
           </div>
         </div>
-        <TapTempo deck={deck} bpm={bpm} analyzing={state.analyzing} loaded={deck.loaded && !state.loading} />
+        <TapTempo deck={deck} bpm={bpm} musicKey={heardKey(state.key, 1 + state.pitch / 100)} analyzing={state.analyzing} loaded={deck.loaded && !state.loading} />
         <div className="deck-load">
           <button className="btn btn-load" onClick={() => fileRef.current?.click()} aria-label={t('Load track')} title={t('Load a track from this device')}>
             <svg viewBox="0 0 24 24" aria-hidden>
@@ -95,6 +100,19 @@ export function DeckView({ deck, other, onOpenLibrary }: { deck: Deck; other: De
             </svg>
             <span className="btn-label">{t('Library')}</span>
           </button>
+          {queue.length > 0 && !state.playing && (
+            <button
+              className="btn btn-load btn-next"
+              onClick={() => library.loadNext(deck)}
+              aria-label={t('Load the next track from the queue')}
+              title={t('Up next: {title}', { title: nextTitle })}
+            >
+              <svg viewBox="0 0 24 24" aria-hidden>
+                <path d="M5 5l9 7-9 7V5Zm12 0v14" />
+              </svg>
+              <span className="queue-count">{queue.length}</span>
+            </button>
+          )}
         </div>
         <input
           ref={fileRef}
@@ -263,7 +281,7 @@ function MarqueeTitle({ text, empty }: { text: string | null; empty: string }) {
  * BPM display that doubles as a TAP button: tap 4+ times in time with the
  * music to set (or correct) the tempo and the beat grid.
  */
-function TapTempo({ deck, bpm, analyzing, loaded }: { deck: Deck; bpm: number | null; analyzing: boolean; loaded: boolean }) {
+function TapTempo({ deck, bpm, musicKey, analyzing, loaded }: { deck: Deck; bpm: number | null; musicKey: Key | null; analyzing: boolean; loaded: boolean }) {
   const t = useT()
   const taps = useRef<{ time: number; pos: number }[]>([])
   const [count, setCount] = useState(0)
@@ -299,7 +317,14 @@ function TapTempo({ deck, bpm, analyzing, loaded }: { deck: Deck; bpm: number | 
       title={t('Tap in time with the beat (4 times or more) to set the tempo')}
     >
       <b>{bpm === null ? (analyzing ? '···' : '—') : bpm.toFixed(1)}</b>
-      <span>{tapping ? (count < 4 ? `TAP ${count}/4` : 'TAP ✓') : bpm === null && loaded && !analyzing ? 'TAP' : 'BPM'}</span>
+      <span>
+        {tapping ? (count < 4 ? `TAP ${count}/4` : 'TAP ✓') : bpm === null && loaded && !analyzing ? 'TAP' : 'BPM'}
+        {musicKey !== null && !tapping && (
+          <i className="deck-key" title={t('Key: {name} (Camelot {code})', { name: keyName(musicKey), code: camelot(musicKey) })}>
+            {camelot(musicKey)}
+          </i>
+        )}
+      </span>
     </button>
   )
 }

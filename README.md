@@ -6,7 +6,7 @@
 
 🎛️ Orquestado por **Foker** ([fokerone](https://github.com/fokerone)) · 🤖 Desarrollado por **[Claude Code](https://claude.com/claude-code)**
 
-**v1.0.0** · [**▶ Abrir DJ4YOU**](https://fokerone.github.io/dj4you/) · [Ayuda dentro de la app](https://fokerone.github.io/dj4you/#ayuda)
+**v1.1.0** · [**▶ Abrir DJ4YOU**](https://fokerone.github.io/dj4you/) · [Ayuda dentro de la app](https://fokerone.github.io/dj4you/#ayuda)
 
 <img src="docs/desktop.png" alt="DJ4YOU en el escritorio: dos decks sincronizados y el mezclador" width="860">
 
@@ -28,11 +28,13 @@ La app está en **español e inglés** y trae una página de ayuda que explica c
 
 ### Decks
 - **Forma de onda** con zoom (de 2 a 32 segundos) y colores por banda, más la **vista general** del tema para saltar a cualquier punto.
-- **Detección de BPM** y grilla de beats automáticas (en un worker, sin trabar la interfaz). Si un tema no tiene un beat claro, **TAP**: tocás la caja de BPM al ritmo y lo fijás a mano.
+- **Detección de BPM, grilla de beats y tono musical** (rueda Camelot, p. ej. `8A`) automáticas, en un worker sin trabar la interfaz. Si un tema no tiene un beat claro, **TAP**: tocás la caja de BPM al ritmo y lo fijás a mano.
+- **CUE automático** en el primer beat: al cargar un tema se salta el silencio del principio.
 - **SYNC con bloqueo**: iguala el tempo y alinea los beats (también a doble o medio tempo) y sigue al otro deck mientras esté activo.
 - **Fader de tempo** con rangos **±8 / ±16 / ±30 / ±50 %**: SYNC llega tan lejos como el rango que elijas.
 - **Jog** para empujar o frenar el tema, **CUE** estilo club, **4 hot cues**, **loops** de 1, 2, 4 u 8 tiempos.
 - **Efectos**: eco a tempo (1/4 a 1 tiempo) y reverb, con knob de cantidad.
+- **Trucos**: freno de plato, spinback, beat-roll (1/2, 1/4 u 1/8 de tiempo, que al soltar retoma donde iría el tema) y flanger.
 - **Aviso de fin de tema**: los últimos segundos se marcan en rojo y el deck parpadea antes de que termine (15, 30 o 60 s, o desactivado).
 
 ### Mezclador
@@ -41,17 +43,22 @@ La app está en **español e inglés** y trae una página de ayuda que explica c
 - **Crossfader** con curva suave o de corte.
 - **Medidor de fase** que dice en palabras si los beats van juntos o chocan.
 - **Auriculares** (modo dividido con cable Y: izquierda auriculares, derecha parlantes) para escuchar el próximo tema antes de que suene.
+- **AUTO**: DJ4YOU mezcla la cola solo (carga el siguiente tema, lo sincroniza y hace la transición en 16 tiempos con cambio de graves). Si tocás el crossfader, vuelve el control al DJ.
 
 ### Música
 - **Mis temas**: lo que cargás queda guardado en el dispositivo (IndexedDB); no se sube nada.
 - **Música libre de [Jamendo](https://www.jamendo.com)**: miles de temas Creative Commons buscables por artista, título o estilo. Solo se muestran licencias que permiten remezclar, y cada tema indica artista y licencia. Jamendo no da el BPM: la lista muestra su velocidad aproximada y, cuando cargás un tema, el BPM que midió DJ4YOU.
+- **Combina con…**: mientras suena un tema, la biblioteca sugiere los que mejor encajan por tempo y tono, y dice por qué.
+- **Cola "A continuación"**: armá el set de antemano y cargá el siguiente con ⏭ en el deck libre (o dejá que AUTO lo mezcle).
 - **Favoritos ★** de cualquier origen, arriba de todo en la biblioteca.
+- **Buscar, ordenar y filtrar** tus temas por nombre, BPM, tono o duración; los que agregás sin reproducir se analizan solos en segundo plano.
 - **Pack de inicio**: 7 beats generados en el navegador (house, techno, hip-hop a 90, drum & bass a 174).
 - Al volver, los decks se recargan donde los dejaste y la biblioteca recuerda la pestaña y el estilo elegidos.
 
 ### Grabar y salir en vivo
 - **REC** graba exactamente lo que sale por el master; al terminar hay un **resumen de la sesión** (setlist, transiciones, logros) para compartir.
 - **LIVE** transmite la mezcla en estéreo a **hasta 20 oyentes** por WebRTC, con enlace, código QR y una sala pública "En vivo ahora".
+- **Reacciones**: los oyentes mandan 🔥 🙌 ❤️ 😮 🕺, que flotan sobre la consola del DJ y en la pantalla de los demás oyentes.
 
 ### Para aprender
 - Tutorial guiado para la primera mezcla, consejos cuando los beats chocan (con un botón para arreglarlo) y **13 logros**.
@@ -82,6 +89,7 @@ npm run dev
 npm run build           # sitio estático en dist/ (PWA)
 npm run build:artifact  # un único HTML autocontenido en dist-artifact/
 npm run lint
+npm test                # tests de BPM, tono, cue automático, SYNC y protocolo del vivo
 ```
 
 ### Variables de entorno (opcionales)
@@ -103,6 +111,7 @@ src/
   listen/      páginas del oyente y de la sala (?listen=<id>, ?live)
   game/        tutorial, consejos y logros
   help/        contenido de la página de ayuda (ES / EN)
+tests/         tests (Vitest) con señales sintéticas: ritmos, acordes y ruido
   i18n.ts      traducciones
 public/        manifest, service worker e íconos de la PWA
 server/        servidor opcional de señalización + sala

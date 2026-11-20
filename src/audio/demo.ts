@@ -14,6 +14,8 @@ export interface DemoSpec {
   readonly style?: Style
   /** Genre label shown in the library */
   readonly genre: string
+  /** Detected musical key (see key.ts), so suggestions work before loading */
+  readonly key?: number
 }
 
 export type Style = 'house' | 'techno' | 'hiphop' | 'dnb'
@@ -45,9 +47,9 @@ export const DEMOS: readonly DemoSpec[] = [
   { name: 'Night Drive', bpm: 126, root: 49, progression: [0, 3, -2, -4], genre: 'House' },
   { name: 'Afterglow', bpm: 120, root: 46.25, progression: [0, 5, 3, -2], genre: 'Deep house' },
   { name: 'Rush Hour', bpm: 128, root: 51.91, progression: [0, -2, -4, -5], genre: 'House' },
-  { name: 'Warehouse', bpm: 132, root: 43.65, progression: [0, 0, -2, 0], genre: 'Techno', style: 'techno' },
-  { name: 'Boom Bap', bpm: 90, root: 41.2, progression: [0, 5, 3, -2], genre: 'Hip-hop', style: 'hiphop' },
-  { name: 'Liquid', bpm: 174, root: 46.25, progression: [0, -4, 3, -5], genre: 'Drum & bass', style: 'dnb' },
+  { name: 'Warehouse', bpm: 132, root: 43.65, progression: [0, 0, -2, 0], genre: 'Techno', style: 'techno', key: 22 },
+  { name: 'Boom Bap', bpm: 90, root: 41.2, progression: [0, 5, 3, -2], genre: 'Hip-hop', style: 'hiphop', key: 7 },
+  { name: 'Liquid', bpm: 174, root: 46.25, progression: [0, -4, 3, -5], genre: 'Drum & bass', style: 'dnb', key: 18 },
 ]
 
 const BARS = 32
