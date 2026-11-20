@@ -3026,3 +3026,56 @@ body[data-coach='load-b'] .lib-row .btn-to-b {
 .phase.is-off .phase-track {
   opacity: 0.85;
 }
+
+/* ---------- long track titles scroll instead of being cut ---------- */
+
+.deck-title {
+  overflow: hidden;
+  text-overflow: clip;
+}
+
+.deck-title > span {
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.deck-title:not(.is-marquee) {
+  text-overflow: ellipsis;
+}
+
+.deck-title.is-marquee {
+  -webkit-mask: linear-gradient(to right, #000 calc(100% - 14px), transparent);
+  mask: linear-gradient(to right, #000 calc(100% - 14px), transparent);
+}
+
+.deck-title.is-marquee > span {
+  animation: marquee var(--marquee-time, 8s) ease-in-out infinite alternate;
+}
+
+@keyframes marquee {
+  0%,
+  18% {
+    transform: translateX(0);
+  }
+  82%,
+  100% {
+    transform: translateX(var(--shift));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .deck-title.is-marquee > span {
+    animation: none;
+  }
+  .deck-title.is-marquee {
+    text-overflow: ellipsis;
+  }
+}
+
+/* Landscape phones: the title needs the room more than the upload button
+   (files can be added from the Library or the empty deck). */
+@media (orientation: landscape) and (max-height: 540px) {
+  .deck-load .btn-load:not(.btn-library) {
+    display: none;
+  }
+}

@@ -41,13 +41,13 @@ const PATTERNS: Record<Style, Pattern> = {
 }
 
 export const DEMOS: readonly DemoSpec[] = [
-  { name: 'Demo · Sunrise (122)', bpm: 122, root: 55, progression: [0, -4, 3, -2], genre: 'House' },
-  { name: 'Demo · Night Drive (126)', bpm: 126, root: 49, progression: [0, 3, -2, -4], genre: 'House' },
-  { name: 'Demo · Afterglow (120)', bpm: 120, root: 46.25, progression: [0, 5, 3, -2], genre: 'Deep house' },
-  { name: 'Demo · Rush Hour (128)', bpm: 128, root: 51.91, progression: [0, -2, -4, -5], genre: 'House' },
-  { name: 'Demo · Warehouse (132)', bpm: 132, root: 43.65, progression: [0, 0, -2, 0], genre: 'Techno', style: 'techno' },
-  { name: 'Demo · Boom Bap (90)', bpm: 90, root: 41.2, progression: [0, 5, 3, -2], genre: 'Hip-hop', style: 'hiphop' },
-  { name: 'Demo · Liquid (174)', bpm: 174, root: 46.25, progression: [0, -4, 3, -5], genre: 'Drum & bass', style: 'dnb' },
+  { name: 'Sunrise', bpm: 122, root: 55, progression: [0, -4, 3, -2], genre: 'House' },
+  { name: 'Night Drive', bpm: 126, root: 49, progression: [0, 3, -2, -4], genre: 'House' },
+  { name: 'Afterglow', bpm: 120, root: 46.25, progression: [0, 5, 3, -2], genre: 'Deep house' },
+  { name: 'Rush Hour', bpm: 128, root: 51.91, progression: [0, -2, -4, -5], genre: 'House' },
+  { name: 'Warehouse', bpm: 132, root: 43.65, progression: [0, 0, -2, 0], genre: 'Techno', style: 'techno' },
+  { name: 'Boom Bap', bpm: 90, root: 41.2, progression: [0, 5, 3, -2], genre: 'Hip-hop', style: 'hiphop' },
+  { name: 'Liquid', bpm: 174, root: 46.25, progression: [0, -4, 3, -5], genre: 'Drum & bass', style: 'dnb' },
 ]
 
 const BARS = 32

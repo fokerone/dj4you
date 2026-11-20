@@ -1,5 +1,5 @@
 import { useT } from '../i18n'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { Deck } from '../audio/deck'
 import { useAnimationFrame, useStore } from '../hooks/useEngine'
 import { library } from '../library/library'
@@ -60,9 +60,7 @@ export function DeckView({ deck, other, onOpenLibrary }: { deck: Deck; other: De
       <header className="deck-head">
         <span className="deck-badge">{state.id}</span>
         <div className="deck-track">
-          <div className={`deck-title ${state.trackName ? '' : 'is-empty'}`} title={state.trackName ?? undefined}>
-            {state.trackName ?? t('No track')}
-          </div>
+          <MarqueeTitle text={state.trackName} empty={t('No track')} />
           <div className="deck-clock">
             <span ref={elapsedRef}>0:00.0</span>
             <span ref={remainRef} className="dim">
@@ -192,4 +190,33 @@ function formatTime(s: number): string {
   const m = Math.floor(s / 60)
   const sec = s - m * 60
   return `${m}:${sec.toFixed(1).padStart(4, '0')}`
+}
+
+/** Track title that gently scrolls back and forth when it doesn't fit. */
+function MarqueeTitle({ text, empty }: { text: string | null; empty: string }) {
+  const boxRef = useRef<HTMLDivElement>(null)
+  const textRef = useRef<HTMLSpanElement>(null)
+  const [shift, setShift] = useState(0)
+
+  useEffect(() => {
+    const box = boxRef.current
+    const span = textRef.current
+    if (!box || !span) return
+    const measure = () => setShift(Math.max(0, Math.ceil(span.scrollWidth - box.clientWidth)))
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(box)
+    return () => ro.disconnect()
+  }, [text])
+
+  return (
+    <div ref={boxRef} className={`deck-title ${text ? '' : 'is-empty'} ${shift > 0 ? 'is-marquee' : ''}`} title={text ?? undefined}>
+      <span
+        ref={textRef}
+        style={shift > 0 ? ({ '--shift': `-${shift}px`, '--marquee-time': `${Math.max(5, shift / 25)}s` } as React.CSSProperties) : undefined}
+      >
+        {text ?? empty}
+      </span>
+    </div>
+  )
 }
