@@ -18,6 +18,14 @@ export type DeckId = 'A' | 'B'
 
 export type SyncResult = 'ok' | 'too-far' | 'no-bpm'
 
+/** Tempo fader ranges (%). ±30 / ±50 are for mixing tracks with very different tempos. */
+export const PITCH_RANGES = [8, 16, 30, 50] as const
+export type PitchRange = (typeof PITCH_RANGES)[number]
+/** SYNC always reaches ±16 %; with a wider fader it reaches as far as the fader. */
+export function syncReach(range: PitchRange): number {
+  return Math.max(16, range)
+}
+
 export const HOT_CUES = 4
 
 /** Reported once a loaded track has been analysed. */
@@ -46,7 +54,7 @@ export interface DeckState {
   readonly volume: number
   /** Tempo change in percent, e.g. +3.5 */
   readonly pitch: number
-  readonly pitchRange: 8 | 16
+  readonly pitchRange: PitchRange
   /** Overview peaks (whole track) */
   readonly peaks: Float32Array | null
   /** Detail peaks for the scrolling waveform */
@@ -314,6 +322,8 @@ export class Deck extends Store<DeckState> {
     this.set({ loading: false, analyzing: true, duration: buffer.duration })
     void analyzeBuffer(buffer).then((a) => {
       if (token !== this.loadToken) return
+      // Before the state change, so anything that re-renders on it sees the result.
+      onAnalyzed?.({ bpm: a.bpm, duration: buffer.duration })
       this.set({
         analyzing: false,
         peaks: a.peaks,
@@ -324,7 +334,6 @@ export class Deck extends Store<DeckState> {
         firstBeat: a.firstBeat,
       })
       this.updateEchoTime()
-      onAnalyzed?.({ bpm: a.bpm, duration: buffer.duration })
     })
   }
 
@@ -414,7 +423,9 @@ export class Deck extends Store<DeckState> {
     this.updateEchoTime()
   }
 
-  setPitchRange(range: 8 | 16): void {
+  setPitchRange(range: PitchRange): void {
+    // A range too narrow for the synced tempo can't keep the lock.
+    if (this.state.syncLock && Math.abs(this.state.pitch) > range) this.set({ syncLock: false })
     this.set({ pitchRange: range })
     this.applyPitch(this.state.pitch) // re-clamp
   }
@@ -430,8 +441,8 @@ export class Deck extends Store<DeckState> {
 
   /**
    * Match this deck's tempo to `other`, and if both are playing also line up
-   * the beats. Handles half/double tempo (e.g. 87 ↔ 174). Returns false if the
-   * tempo is out of reach even at ±16%.
+   * the beats. Handles half/double tempo (e.g. 87 ↔ 174). Returns 'too-far' if
+   * the tempo is beyond the reach the DJ chose (±16 %, or ±30 / ±50 %).
    */
   syncTo(other: Deck): SyncResult {
     const own = this.state.bpm
@@ -512,7 +523,7 @@ export class Deck extends Store<DeckState> {
     this.applyPitch(pitch)
   }
 
-  /** Tempo change (%) that matches `other` (also half / double time), or null if beyond ±16%. */
+  /** Tempo change (%) that matches `other` (also half / double time), or null if out of reach. */
   private pitchToMatch(other: Deck): number | null {
     return this.tempoMatch(other)?.pitch ?? null
   }
@@ -528,7 +539,7 @@ export class Deck extends Store<DeckState> {
       const pitch = ((target * ratio) / own - 1) * 100
       if (!best || Math.abs(pitch) < Math.abs(best.pitch)) best = { pitch, ratio }
     }
-    return best && Math.abs(best.pitch) <= 16 ? best : null
+    return best && Math.abs(best.pitch) <= syncReach(this.state.pitchRange) + 1e-9 ? best : null
   }
 
   // ---- EQ / filter / FX ----

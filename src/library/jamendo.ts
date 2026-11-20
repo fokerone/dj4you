@@ -26,6 +26,8 @@ export interface JamendoTrack {
   readonly licenseUrl: string
   /** Track page on jamendo.com */
   readonly pageUrl: string
+  /** Jamendo's rough tempo tag (it has no BPM): 'verylow' … 'veryhigh' */
+  readonly speed?: string
 }
 
 export interface JamendoPage {
@@ -68,6 +70,7 @@ interface ApiTrack {
   album_image?: string
   license_ccurl?: string
   shareurl?: string
+  musicinfo?: { speed?: string }
 }
 
 export async function searchJamendo(opts: { query: string; genre: string; offset: number; signal?: AbortSignal }): Promise<JamendoPage> {
@@ -77,7 +80,7 @@ export async function searchJamendo(opts: { query: string; genre: string; offset
     limit: String(PAGE_SIZE),
     offset: String(opts.offset),
     ccnd: 'false',
-    include: 'licenses',
+    include: 'licenses musicinfo',
     imagesize: '100',
     order: opts.query ? 'relevance' : 'popularity_month',
   })
@@ -105,6 +108,7 @@ export async function searchJamendo(opts: { query: string; genre: string; offset
       license: licenseLabel(t.license_ccurl ?? ''),
       licenseUrl: safeUrl(t.license_ccurl ?? ''),
       pageUrl: safeUrl(t.shareurl ?? `https://www.jamendo.com/track/${t.id}`),
+      speed: SPEEDS.includes(t.musicinfo?.speed ?? '') ? t.musicinfo?.speed : undefined,
     })),
     hasMore: results.length === PAGE_SIZE,
   }
@@ -135,6 +139,37 @@ function clean(s: unknown, max: number): string {
       .trim()
       .slice(0, max)
   )
+}
+
+const SPEEDS = ['verylow', 'low', 'medium', 'high', 'veryhigh']
+
+/**
+ * Jamendo's API has no BPM, so the tempo DJ4YOU detects when a track is
+ * loaded is kept here (by track id) and shown in the list from then on.
+ */
+const BPM_KEY = 'dj4you.jamendoBpm'
+const MAX_BPMS = 500
+
+export function knownBpms(): Record<string, number> {
+  try {
+    return JSON.parse(localStorage.getItem(BPM_KEY) ?? '{}') as Record<string, number>
+  } catch {
+    return {}
+  }
+}
+
+export function rememberBpm(id: string, bpm: number | null): void {
+  if (!bpm) return
+  try {
+    const all = knownBpms()
+    delete all[id]
+    all[id] = Math.round(bpm * 10) / 10
+    const ids = Object.keys(all)
+    for (const old of ids.slice(0, Math.max(0, ids.length - MAX_BPMS))) delete all[old]
+    localStorage.setItem(BPM_KEY, JSON.stringify(all))
+  } catch {
+    /* not kept */
+  }
 }
 
 /** Jamendo sometimes returns names with HTML entities ("Axl &amp; Arth"). */

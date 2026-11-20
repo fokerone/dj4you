@@ -1,6 +1,6 @@
 import { useT } from '../i18n'
 import { useEffect, useRef, useState } from 'react'
-import type { Deck } from '../audio/deck'
+import { type Deck, PITCH_RANGES, syncReach } from '../audio/deck'
 import { useAnimationFrame, useStore } from '../hooks/useEngine'
 import { library } from '../library/library'
 import { audioAccept, isAudioFile } from '../library/audioFiles'
@@ -122,7 +122,9 @@ export function DeckView({ deck, other, onOpenLibrary }: { deck: Deck; other: De
                 coach.notify(
                   'info',
                   t('Tempos too far apart to sync'),
-                  t('{a} and {b} BPM differ by more than 16%. Pick tracks with closer tempos.', { a: Math.round(state.bpm ?? 0), b: Math.round(otherBpm ?? 0) }),
+                  state.pitchRange < 50
+                    ? t('{a} and {b} BPM differ by more than {n}%. Widen the tempo range (±{r} button) to ±30 or ±50 to sync them.', { a: Math.round(state.bpm ?? 0), b: Math.round(otherBpm ?? 0), n: syncReach(state.pitchRange), r: state.pitchRange })
+                    : t('{a} and {b} BPM differ by more than 50%. Pick tracks with closer tempos.', { a: Math.round(state.bpm ?? 0), b: Math.round(otherBpm ?? 0) }),
                 )
               else coach.notify('info', t('Needs a BPM on both decks'))
             }}
@@ -171,7 +173,11 @@ export function DeckView({ deck, other, onOpenLibrary }: { deck: Deck; other: De
             display={`${state.pitch >= 0 ? '+' : ''}${state.pitch.toFixed(2)}%`}
           />
           <div className="pitch-buttons">
-            <button className="btn btn-small" onClick={() => deck.setPitchRange(state.pitchRange === 8 ? 16 : 8)}>
+            <button
+              className={`btn btn-small ${state.pitchRange > 16 ? 'is-wide' : ''}`}
+              title={t('Tempo fader range: tap to change (±8, ±16, ±30, ±50 %)')}
+              onClick={() => deck.setPitchRange(PITCH_RANGES[(PITCH_RANGES.indexOf(state.pitchRange) + 1) % PITCH_RANGES.length])}
+            >
               ±{state.pitchRange}
             </button>
             <button className="btn btn-small" onClick={() => deck.setPitch(0)}>

@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import type { Deck } from '../audio/deck'
 import { engine } from '../audio/engine'
 import { useT } from '../i18n'
-import { GENRES, jamendoAvailable, type JamendoTrack, searchJamendo } from '../library/jamendo'
+import { useStore } from '../hooks/useEngine'
+import { GENRES, jamendoAvailable, type JamendoTrack, knownBpms, searchJamendo } from '../library/jamendo'
 
 type Status = 'idle' | 'loading' | 'ready' | 'error'
 
@@ -18,6 +19,9 @@ export function JamendoBrowser({ onPick }: { onPick: (track: JamendoTrack, deck:
   const [retry, setRetry] = useState(0)
   const abort = useRef<AbortController | null>(null)
   const available = jamendoAvailable()
+  // Re-render when a deck finishes analysing, so a newly detected BPM shows up.
+  useStore(engine.decks[0])
+  useStore(engine.decks[1])
 
   // Wait for typing to pause before searching.
   useEffect(() => {
@@ -57,6 +61,7 @@ export function JamendoBrowser({ onPick }: { onPick: (track: JamendoTrack, deck:
   }
 
   const [a, b] = engine.decks
+  const bpms = knownBpms()
 
   return (
     <>
@@ -111,6 +116,12 @@ export function JamendoBrowser({ onPick }: { onPick: (track: JamendoTrack, deck:
                   </div>
                   <div className="lib-meta">
                     {tr.artist} · {formatDuration(tr.duration)} ·{' '}
+                    {bpms[tr.id] ? (
+                      <span className="jam-bpm">{bpms[tr.id].toFixed(bpms[tr.id] % 1 ? 1 : 0)} BPM</span>
+                    ) : (
+                      tr.speed && <span className="jam-speed" title={t('Jamendo gives no BPM: load the track and DJ4YOU measures it')}>{t(SPEED_LABEL[tr.speed])}</span>
+                    )}
+                    {(bpms[tr.id] || tr.speed) && ' · '}
                     <a className="jam-license" href={tr.licenseUrl || tr.pageUrl} target="_blank" rel="noreferrer" title={t('License terms')}>
                       {tr.license}
                     </a>
@@ -145,6 +156,14 @@ export function JamendoBrowser({ onPick }: { onPick: (track: JamendoTrack, deck:
       </div>
     </>
   )
+}
+
+const SPEED_LABEL: Record<string, string> = {
+  verylow: 'very slow',
+  low: 'slow',
+  medium: 'mid tempo',
+  high: 'fast',
+  veryhigh: 'very fast',
 }
 
 function formatDuration(s: number): string {

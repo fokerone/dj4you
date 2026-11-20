@@ -3,7 +3,7 @@ import { DEMOS, renderDemo } from '../audio/demo'
 import { Store } from '../audio/store'
 import { locale, t } from '../i18n'
 import { idb, RECORDINGS, TRACKS } from './idb'
-import { jamendoAudioUrl, type JamendoTrack } from './jamendo'
+import { jamendoAudioUrl, type JamendoTrack, rememberBpm } from './jamendo'
 
 export interface TrackMeta {
   readonly id: string
@@ -110,7 +110,7 @@ export class Library extends Store<LibraryState> {
   /** Stream a Jamendo track onto a deck, credited as "Title — Artist". */
   loadJamendo(track: JamendoTrack, deck: Deck): Promise<void> {
     remember(deck, { type: 'jamendo', track })
-    return deck.loadUrl(jamendoAudioUrl(track.id), `${track.name} — ${track.artist}`)
+    return deck.loadUrl(jamendoAudioUrl(track.id), `${track.name} — ${track.artist}`, (a) => rememberBpm(track.id, a.bpm))
   }
 
   async loadTrack(id: string, deck: Deck): Promise<void> {
