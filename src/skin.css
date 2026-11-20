@@ -3778,3 +3778,8 @@ button.deck-bpm:active:not(:disabled) {
 .lib-favs h3 .fav-star {
   font-size: 1rem;
 }
+
+/* Sheets are opaque so the desk doesn't show through their text. */
+.sheet {
+  background: #11141d;
+}

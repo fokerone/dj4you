@@ -19,6 +19,7 @@ export function JamendoBrowser({ onPick }: { onPick: (track: JamendoTrack, deck:
   const [status, setStatus] = useState<Status>('idle')
   const [retry, setRetry] = useState(0)
   const abort = useRef<AbortController | null>(null)
+  const bodyRef = useRef<HTMLDivElement>(null)
   const available = jamendoAvailable()
   // Re-render when a deck finishes analysing, so a newly detected BPM shows up.
   useStore(engine.decks[0])
@@ -35,6 +36,13 @@ export function JamendoBrowser({ onPick }: { onPick: (track: JamendoTrack, deck:
     const ac = new AbortController()
     abort.current = ac
     setStatus('loading')
+    // A new style or search replaces the list: clear it so the loading state
+    // shows right away instead of the old results looking stuck.
+    if (offset === 0) {
+      setTracks([])
+      setHasMore(false)
+      bodyRef.current?.scrollTo({ top: 0 })
+    }
     searchJamendo({ query: debounced, genre, offset, signal: ac.signal })
       .then((page) => {
         setTracks((prev) => (offset === 0 ? [...page.tracks] : [...prev, ...page.tracks]))
@@ -85,7 +93,7 @@ export function JamendoBrowser({ onPick }: { onPick: (track: JamendoTrack, deck:
         </div>
       </div>
 
-      <div className="sheet-body jam-body">
+      <div ref={bodyRef} className="sheet-body jam-body" aria-busy={status === 'loading'}>
         {status === 'error' && (
           <div className="jam-state">
             <p>{t('Couldn’t reach Jamendo. Check your connection.')}</p>
@@ -97,7 +105,13 @@ export function JamendoBrowser({ onPick }: { onPick: (track: JamendoTrack, deck:
         {status === 'loading' && tracks.length === 0 && (
           <div className="jam-state">
             <span className="spinner" aria-hidden />
-            <p>{t('Finding music…')}</p>
+            <p>
+              {debounced
+                ? t('Searching "{q}"…', { q: debounced })
+                : genre
+                  ? t('Finding {genre} music…', { genre: t(GENRES.find((g) => g.id === genre)?.label ?? '') })
+                  : t('Finding music…')}
+            </p>
           </div>
         )}
         {status === 'ready' && tracks.length === 0 && (
