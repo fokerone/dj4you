@@ -6,7 +6,7 @@
 
 🎛️ Orquestado por **Foker** ([fokerone](https://github.com/fokerone)) · 🤖 Desarrollado por **[Claude Code](https://claude.com/claude-code)**
 
-**v1.1.0** · [**▶ Abrir DJ4YOU**](https://fokerone.github.io/dj4you/) · [Ayuda dentro de la app](https://fokerone.github.io/dj4you/#ayuda)
+**v1.1.1** · [**▶ Abrir DJ4YOU**](https://fokerone.github.io/dj4you/) · [Ayuda dentro de la app](https://fokerone.github.io/dj4you/#ayuda)
 
 <img src="docs/desktop.png" alt="DJ4YOU en el escritorio: dos decks sincronizados y el mezclador" width="860">
 

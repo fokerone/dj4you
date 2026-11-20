@@ -2,6 +2,11 @@
 
 Todas las versiones de DJ4YOU. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y el número de versión, [versionado semántico](https://semver.org/lang/es/).
 
+## [1.1.1] - 2026-11-20
+
+### Mejoras
+- Los platos de los decks A y B son el mismo disco de vinilo que gira en la pantalla de bienvenida (surcos, etiqueta y brillo), con la letra del deck en la etiqueta.
+
 ## [1.1.0] - 2026-11-20
 
 ### Nuevo
@@ -32,5 +37,6 @@ Primera versión estable.
 - Grabación de la mezcla con resumen de sesión, y transmisión en vivo hasta 20 oyentes (WebRTC).
 - Tutorial, consejos, logros y página de ayuda; español e inglés; PWA instalable que funciona sin conexión.
 
+[1.1.1]: https://github.com/fokerone/dj4you/releases/tag/v1.1.1
 [1.1.0]: https://github.com/fokerone/dj4you/releases/tag/v1.1.0
 [1.0.0]: https://github.com/fokerone/dj4you/releases/tag/v1.0.0

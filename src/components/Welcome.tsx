@@ -1,3 +1,4 @@
+import { Vinyl } from './Vinyl'
 import { useEffect, useRef } from 'react'
 import { engine } from '../audio/engine'
 import { coach } from '../game'
@@ -119,33 +120,7 @@ function Turntable() {
     <div className="tt" aria-hidden>
       <div className="tt-plinth">
         <div className="tt-platter">
-          <svg className="tt-record" viewBox="0 0 200 200">
-            <defs>
-              <radialGradient id="tt-vinyl" cx="50%" cy="50%" r="50%">
-                <stop offset="0" stopColor="#1b1f2a" />
-                <stop offset="1" stopColor="#0a0c11" />
-              </radialGradient>
-              <linearGradient id="tt-label" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0" stopColor="#22d3ee" />
-                <stop offset="1" stopColor="#fb923c" />
-              </linearGradient>
-              <linearGradient id="tt-sheen" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0.3" stopColor="#fff" stopOpacity="0" />
-                <stop offset="0.5" stopColor="#fff" stopOpacity="0.12" />
-                <stop offset="0.7" stopColor="#fff" stopOpacity="0" />
-              </linearGradient>
-            </defs>
-            <circle cx="100" cy="100" r="98" fill="url(#tt-vinyl)" />
-            {Array.from({ length: 14 }, (_, i) => (
-              <circle key={i} cx="100" cy="100" r={42 + i * 4} fill="none" stroke="#ffffff" strokeOpacity={i % 3 === 0 ? 0.07 : 0.035} />
-            ))}
-            <circle cx="100" cy="100" r="34" fill="url(#tt-label)" />
-            <text x="100" y="108" textAnchor="middle" fontSize="22" fontWeight="800" fill="#07080c" fontFamily="Space Grotesk, Inter, sans-serif">
-              4
-            </text>
-            <circle cx="100" cy="100" r="3" fill="#07080c" />
-            <circle cx="100" cy="100" r="98" fill="url(#tt-sheen)" />
-          </svg>
+          <Vinyl id="tt" label="4" className="tt-record" />
         </div>
         <div className="tt-arm">
           <span className="tt-arm-base" />

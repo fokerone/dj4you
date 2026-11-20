@@ -2,6 +2,7 @@ import { useT } from '../i18n'
 import { useRef } from 'react'
 import type { Deck } from '../audio/deck'
 import { useAnimationFrame } from '../hooks/useEngine'
+import { Vinyl } from './Vinyl'
 
 /** A virtual 33⅓ rpm platter: one rotation = 1.8 s of track time. */
 const SECONDS_PER_TURN = 1.8
@@ -128,9 +129,8 @@ export function JogWheel({ deck, disabled }: { deck: Deck; disabled: boolean }) 
         </g>
       </svg>
       <div ref={platterRef} className="jog-platter">
-        <div className="jog-marker" />
+        <Vinyl id={`jog-${deck.id}`} label={deck.id} className="jog-record" />
       </div>
-      <div className="jog-cap">{deck.id}</div>
     </div>
   )
 }

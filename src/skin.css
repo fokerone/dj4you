@@ -4220,3 +4220,30 @@ button.deck-bpm:active:not(:disabled) {
 .player {
   position: relative;
 }
+
+/* ---------- jog wheel: the same record as the welcome turntable ---------- */
+.jog-platter {
+  inset: 7%;
+  display: grid;
+  place-items: center;
+  background: none;
+  box-shadow: 0 4px 14px rgb(0 0 0 / 0.5);
+}
+.jog-record {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.jog.is-beat .jog-platter {
+  animation: jog-thump-record 0.18s ease-out;
+}
+@keyframes jog-thump-record {
+  from {
+    box-shadow:
+      0 4px 14px rgb(0 0 0 / 0.5),
+      0 0 24px color-mix(in srgb, var(--accent) 60%, transparent);
+  }
+}
+.jog.is-disabled .jog-record {
+  opacity: 0.55;
+}
