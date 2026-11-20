@@ -3,6 +3,8 @@ import type { Deck } from './audio/deck'
 import { engine } from './audio/engine'
 import { DeckView } from './components/DeckView'
 import { HeadphonesSheet } from './components/HeadphonesSheet'
+import { HelpSheet } from './components/HelpSheet'
+import type { HelpTab } from './help/content'
 import { SummarySheet, type SummaryData } from './components/SummarySheet'
 import { LibrarySheet } from './components/LibrarySheet'
 import { LiveButton, LiveSheet } from './components/LiveSheet'
@@ -36,15 +38,31 @@ export default function App() {
   const openLive = useCallback(() => setLiveOpen(true), [])
   const closeLive = useCallback(() => setLiveOpen(false), [])
   const [toast, setToast] = useState<string | null>(null)
-  const [welcome, setWelcome] = useState(shouldWelcome)
+  const [welcome, setWelcome] = useState(() => shouldWelcome() && !['#ayuda', '#help'].includes(location.hash))
   const [menuOpen, setMenuOpen] = useState(false)
   const [hpOpen, setHpOpen] = useState(false)
+  // Help opens directly from a #ayuda / #help link.
+  const helpLinked = ['#ayuda', '#help'].includes(location.hash)
+  const [helpOpen, setHelpOpen] = useState(helpLinked)
+  const openHelp = useCallback(() => setHelpOpen(true), [])
+  const closeHelp = useCallback(() => setHelpOpen(false), [])
+  const toggleHelp = useCallback(() => setHelpOpen((o) => !o), [])
+  /** "Show on the desk": close help, switch tab on phones, make the control pulse. */
+  const spotlight = useCallback((target: string, tab?: HelpTab) => {
+    setHelpOpen(false)
+    if (tab && matchMedia('(orientation: portrait) and (max-width: 899px)').matches) setTab(tab)
+    window.setTimeout(() => {
+      const els = [...document.querySelectorAll<HTMLElement>(target)].filter((el) => el.offsetParent !== null)
+      els[0]?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+      for (const el of els) el.classList.add('spotlight')
+      window.setTimeout(() => els.forEach((el) => el.classList.remove('spotlight')), 2800)
+    }, 120)
+  }, [])
   const openHp = useCallback(() => setHpOpen(true), [])
   const closeHp = useCallback(() => setHpOpen(false), [])
   const openMenu = useCallback(() => setMenuOpen(true), [])
   const closeMenu = useCallback(() => setMenuOpen(false), [])
-  const toggleMenu = useCallback(() => setMenuOpen((o) => !o), [])
-  useShortcuts(toggleMenu)
+  useShortcuts(toggleHelp)
   const recState = useStore(engine.recorder)
   const liveState = useStore(engine.live)
 
@@ -141,6 +159,9 @@ export default function App() {
           <Brand />
         </h1>
         <LangSwitch className="topbar-lang" />
+        <button className="btn btn-small btn-help" onClick={openHelp} aria-label={t('Help')} title={t('Help: what every control does')}>
+          ?
+        </button>
         <MenuButton onOpen={openMenu} />
       </header>
 
@@ -182,7 +203,8 @@ export default function App() {
       <TutorialCard />
       <HintBar />
       <Notes />
-      <MenuSheet open={menuOpen} onClose={closeMenu} onWelcome={() => setWelcome(true)} onHeadphones={openHp} />
+      <MenuSheet open={menuOpen} onClose={closeMenu} onWelcome={() => setWelcome(true)} onHeadphones={openHp} onHelp={openHelp} />
+      <HelpSheet open={helpOpen} onClose={closeHelp} onSpotlight={spotlight} />
       <HeadphonesSheet open={hpOpen} onClose={closeHp} />
       <SummarySheet key={summary ? `${summary.kind}-${summary.seconds}` : 'none'} data={summary} onClose={() => showSummary(null)} />
       {welcome && <Welcome onDone={() => setWelcome(false)} />}

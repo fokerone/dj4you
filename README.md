@@ -9,7 +9,7 @@ A mobile-friendly DJ desk in the browser. Anyone with a phone or PC and a web br
 - On-device library (IndexedDB) with a built-in starter pack of 7 generated demo beats (house, techno, hip-hop 90, drum & bass 174); decks are restored on your next visit
 - Record your mix and get a session recap (setlist, transitions, achievements, share); installable PWA that works offline
 - A friendly coach: guided first-mix tutorial, gentle feedback on transitions, one-tap fixes when beats clash, and 13 achievements
-- Spanish and English UI
+- Spanish and English UI, with a searchable help page that explains every control (open with ?, from the Menu, or with the #ayuda / #help link)
 - Go live: stream your mix to up to 20 listeners over WebRTC (stereo Opus, 192 kb/s), with a share link, QR code and a public "Live now" lobby
 
 ## Develop

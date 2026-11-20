@@ -3107,3 +3107,234 @@ body[data-coach='load-b'] .lib-row .btn-to-b {
   stroke-linecap: round;
   stroke-linejoin: round;
 }
+
+/* ================= help ================= */
+
+.btn-help {
+  min-width: 38px;
+  min-height: 38px;
+  padding: 0;
+  font-weight: 800;
+  font-size: 1rem;
+}
+
+.topbar .btn-help {
+  margin-left: 4px;
+}
+
+@media (orientation: portrait) and (max-width: 899px) {
+  .topbar .btn-help {
+    margin-left: auto;
+    min-height: 34px;
+    min-width: 34px;
+  }
+  .topbar .btn-help + .btn-menu {
+    margin-left: 6px;
+  }
+}
+
+.sheet-help {
+  width: min(760px, 100%);
+}
+
+.help-tools {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.help-search {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 12px;
+  border: 1px solid rgb(255 255 255 / 0.18);
+  background: rgb(0 0 0 / 0.35);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.95rem;
+}
+
+.help-search:focus-visible {
+  outline: 2px solid var(--deck-a);
+  outline-offset: 1px;
+}
+
+.help-nav {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+}
+
+.help-chip {
+  flex: none;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgb(255 255 255 / 0.05);
+  color: #d5dbe6;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.help-chip:hover {
+  border-color: rgb(255 255 255 / 0.3);
+  color: #fff;
+}
+
+.help-body {
+  gap: 22px;
+  scroll-padding-top: 8px;
+}
+
+.help-section h3 {
+  margin: 4px 0 6px;
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  color: #fff;
+}
+
+.help-intro {
+  margin: 0 0 10px;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: #c3cad8;
+}
+
+.help-items {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 8px;
+}
+
+.help-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+}
+
+.help-card header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.help-card b {
+  font-size: 0.95rem;
+  color: #fff;
+}
+
+.help-card p {
+  margin: 0;
+  font-size: 0.86rem;
+  line-height: 1.5;
+  color: #d5dbe6;
+}
+
+.help-tip {
+  color: #f5e3b3 !important;
+}
+
+.help-kbd span {
+  color: #c3cad8;
+}
+
+kbd {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 5px;
+  border: 1px solid rgb(255 255 255 / 0.22);
+  border-bottom-width: 2px;
+  background: rgb(0 0 0 / 0.35);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.78rem;
+  color: var(--gold);
+}
+
+.help-show {
+  flex: none;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--deck-a) 55%, transparent);
+  background: transparent;
+  color: var(--deck-a);
+  font: inherit;
+  font-size: 0.74rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.help-show:hover {
+  background: color-mix(in srgb, var(--deck-a) 15%, transparent);
+}
+
+.help-keys {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 6px 16px;
+}
+
+.help-keys div {
+  display: grid;
+  grid-template-columns: 7.5em 1fr;
+  gap: 8px;
+  align-items: baseline;
+  font-size: 0.86rem;
+}
+
+.help-keys dd {
+  margin: 0;
+  color: #d5dbe6;
+}
+
+.menu-help {
+  border: 1px solid color-mix(in srgb, var(--deck-a) 40%, transparent);
+}
+
+@media (pointer: coarse) {
+  .help-chip-keys,
+  #help-keys,
+  .help-kbd {
+    display: none;
+  }
+}
+
+/* "Show on the desk" spotlight */
+.spotlight {
+  position: relative;
+  z-index: 15;
+  outline: 3px solid #fff !important;
+  outline-offset: 4px;
+  border-radius: 10px;
+  animation: spot 0.9s ease-in-out 3;
+}
+
+@keyframes spot {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgb(255 255 255 / 0.7);
+  }
+  50% {
+    box-shadow: 0 0 0 12px rgb(255 255 255 / 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spotlight {
+    animation: none;
+  }
+}

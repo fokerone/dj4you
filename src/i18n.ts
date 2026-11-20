@@ -388,6 +388,17 @@ const ES: Record<string, string> = {
   'It follows deck {other}’s tempo until you tap SYNC again or move its tempo fader.': 'Sigue el tempo del deck {other} hasta que vuelvas a tocar SYNC o muevas su fader de tempo.',
   'Tempos too far apart to sync': 'Tempos demasiado distintos para sincronizar',
   '{a} and {b} BPM differ by more than 16%. Pick tracks with closer tempos.': '{a} y {b} BPM se diferencian en más de un 16 %. Elige temas con tempos más parecidos.',
+  // help
+  Help: 'Ayuda',
+  'Help: what every control does': 'Ayuda: qué hace cada control',
+  'What every control does': 'Qué hace cada control',
+  'Search a control (e.g. SYNC, loop, filter)': 'Busca un control (p. ej. SYNC, loop, filtro)',
+  'Search help': 'Buscar en la ayuda',
+  'Help sections': 'Secciones de la ayuda',
+  'Nothing matches "{q}". Try another word.': 'Nada coincide con «{q}». Prueba con otra palabra.',
+  'On a computer. They don’t work while you type in a text box.': 'En ordenador. No funcionan mientras escribes en un cuadro de texto.',
+  'Open this help': 'Abrir esta ayuda',
+  'Show on the desk': 'Ver en la mesa',
 }
 
 function detect(): Lang {
