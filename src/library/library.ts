@@ -3,6 +3,7 @@ import { DEMOS, renderDemo } from '../audio/demo'
 import { Store } from '../audio/store'
 import { locale, t } from '../i18n'
 import { idb, RECORDINGS, TRACKS } from './idb'
+import { prefs } from './prefs'
 import { jamendoAudioUrl, type JamendoTrack, rememberBpm } from './jamendo'
 
 export interface TrackMeta {
@@ -161,6 +162,7 @@ export class Library extends Store<LibraryState> {
   }
 
   async removeTrack(id: string): Promise<void> {
+    prefs.forgetTrack(id)
     await idb.delete(TRACKS, id).catch(() => undefined)
     await this.refresh()
   }

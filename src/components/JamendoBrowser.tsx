@@ -3,6 +3,7 @@ import type { Deck } from '../audio/deck'
 import { engine } from '../audio/engine'
 import { useT } from '../i18n'
 import { useStore } from '../hooks/useEngine'
+import { FavButton } from './FavButton'
 import { GENRES, jamendoAvailable, type JamendoTrack, knownBpms, searchJamendo } from '../library/jamendo'
 
 type Status = 'idle' | 'loading' | 'ready' | 'error'
@@ -128,6 +129,7 @@ export function JamendoBrowser({ onPick }: { onPick: (track: JamendoTrack, deck:
                   </div>
                 </div>
                 <div className="lib-actions">
+                  <FavButton fav={{ type: 'jamendo', track: tr }} title={tr.name} />
                   <button className="btn btn-small btn-to-a" onClick={() => onPick(tr, a)} aria-label={t('Load {title} on deck {id}', { title: tr.name, id: 'A' })}>
                     A
                   </button>

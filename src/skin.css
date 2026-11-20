@@ -3713,3 +3713,68 @@ button.deck-bpm:active:not(:disabled) {
 .jam-speed {
   font-style: italic;
 }
+
+/* ---------- end-of-track warning ---------- */
+.overview-end {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  background: repeating-linear-gradient(135deg, rgb(255 59 79 / 0.22) 0 4px, rgb(255 59 79 / 0.1) 4px 8px);
+  border-left: 1px solid rgb(255 59 79 / 0.7);
+  pointer-events: none;
+}
+.deck.is-ending .overview-end {
+  background: rgb(255 59 79 / 0.35);
+}
+.deck.is-ending .wave::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 2px #ff3b4f, inset 0 0 28px rgb(255 59 79 / 0.55);
+  background: linear-gradient(90deg, transparent 55%, rgb(255 59 79 / 0.22));
+  pointer-events: none;
+  z-index: 3;
+  animation: end-pulse 1.2s ease-in-out infinite;
+}
+.deck.is-ending-last .wave::after {
+  animation-duration: 0.5s;
+}
+.deck.is-ending .deck-clock span:last-child {
+  color: #ff5a6b;
+  font-weight: 700;
+}
+.deck.is-ending-last .deck-clock span:last-child {
+  animation: end-pulse 0.5s ease-in-out infinite;
+}
+@keyframes end-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .deck.is-ending .wave::after,
+  .deck.is-ending-last .deck-clock span:last-child {
+    animation: none;
+  }
+}
+
+/* ---------- favourites ---------- */
+.btn-fav {
+  min-width: 36px;
+  padding-inline: 6px;
+}
+.fav-star {
+  font-size: 1.15rem;
+  line-height: 1;
+  color: var(--muted, #9aa3b5);
+}
+.fav-star.is-on,
+.btn-fav.is-on .fav-star {
+  color: #ffc93c;
+  text-shadow: 0 0 10px rgb(255 201 60 / 0.45);
+}
+.lib-favs h3 .fav-star {
+  font-size: 1rem;
+}

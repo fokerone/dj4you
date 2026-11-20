@@ -5,6 +5,7 @@ import { useStore } from '../hooks/useEngine'
 import { SHORTCUTS } from '../hooks/useShortcuts'
 import { useT } from '../i18n'
 import { Brand, LangSwitch } from './Brand'
+import { END_WARNINGS, prefs } from '../library/prefs'
 
 /** Short confirmations and achievement unlocks, top of the screen. */
 export function Notes() {
@@ -129,6 +130,20 @@ export function PhoneBar({ onMenu }: { onMenu: () => void }) {
 }
 
 /** Settings + progress: language, achievements, tutorial, shortcuts. */
+function EndWarningSwitch() {
+  const t = useT()
+  const { endWarning } = useStore(prefs)
+  return (
+    <div className="lang" role="radiogroup" aria-label={t('Warn before a track ends')}>
+      {END_WARNINGS.map((s) => (
+        <button key={s} role="radio" aria-checked={endWarning === s} className={endWarning === s ? 'is-on' : ''} onClick={() => prefs.setEndWarning(s)}>
+          {s ? `${s}s` : t('Off')}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 export function MenuSheet({
   open,
   onClose,
@@ -176,6 +191,11 @@ export function MenuSheet({
           <section className="menu-row">
             <span>{t('Language')}</span>
             <LangSwitch />
+          </section>
+
+          <section className="menu-row">
+            <span>{t('Warn before a track ends')}</span>
+            <EndWarningSwitch />
           </section>
 
           <button

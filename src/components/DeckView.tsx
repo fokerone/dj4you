@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { type Deck, PITCH_RANGES, syncReach } from '../audio/deck'
 import { useAnimationFrame, useStore } from '../hooks/useEngine'
 import { library } from '../library/library'
+import { prefs } from '../library/prefs'
 import { audioAccept, isAudioFile } from '../library/audioFiles'
 import { coach } from '../game'
 import { Fader } from './Fader'
@@ -18,6 +19,7 @@ export function DeckView({ deck, other, onOpenLibrary }: { deck: Deck; other: De
   const fileRef = useRef<HTMLInputElement>(null)
   const elapsedRef = useRef<HTMLSpanElement>(null)
   const remainRef = useRef<HTMLSpanElement>(null)
+  const sectionRef = useRef<HTMLElement>(null)
   const [dragOver, setDragOver] = useState(false)
 
   useAnimationFrame(() => {
@@ -25,6 +27,16 @@ export function DeckView({ deck, other, onOpenLibrary }: { deck: Deck; other: De
     const empty = !state.duration
     if (elapsedRef.current) elapsedRef.current.textContent = empty ? '–:––' : formatTime(pos)
     if (remainRef.current) remainRef.current.textContent = empty ? '' : `-${formatTime(state.duration - pos)}`
+    // End-of-track warning: the deck glows red in the last seconds (not while
+    // a loop keeps the track from ending).
+    const warnAt = prefs.getSnapshot().endWarning
+    const left = state.duration - pos
+    const ending = !empty && warnAt > 0 && state.playing && !state.loop && left <= warnAt && left > 0
+    const el = sectionRef.current
+    if (el) {
+      el.classList.toggle('is-ending', ending)
+      el.classList.toggle('is-ending-last', ending && left <= 10)
+    }
   })
 
   const loadFile = (file: File | undefined) => {
@@ -44,6 +56,7 @@ export function DeckView({ deck, other, onOpenLibrary }: { deck: Deck; other: De
 
   return (
     <section
+      ref={sectionRef}
       className={`deck deck-${state.id.toLowerCase()} ${dragOver ? 'drag-over' : ''} ${state.playing ? 'is-playing' : ''}`}
       aria-label={t('Deck {id}', { id: state.id })}
       onDragOver={(e) => {

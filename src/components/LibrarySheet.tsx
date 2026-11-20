@@ -10,6 +10,9 @@ import { install } from '../pwa'
 import { audioAccept, isAudioFile } from '../library/audioFiles'
 import { coach } from '../game'
 import { JamendoBrowser } from './JamendoBrowser'
+import { FavButton } from './FavButton'
+import { type Favorite, favoriteKey, prefs } from '../library/prefs'
+import { knownBpms } from '../library/jamendo'
 
 interface Props {
   open: boolean
@@ -23,6 +26,7 @@ export function LibrarySheet({ open, onClose, onLoaded }: Props) {
   const t = useT()
   const lib = useStore(library)
   const inst = useStore(install)
+  const { favorites } = useStore(prefs)
   const fileRef = useRef<HTMLInputElement>(null)
   const closeRef = useRef<HTMLButtonElement>(null)
   const [view, setView] = useState<'mine' | 'free'>('mine')
@@ -83,6 +87,30 @@ export function LibrarySheet({ open, onClose, onLoaded }: Props) {
           <JamendoBrowser onPick={(track, deck) => sendTo(deck, (d) => library.loadJamendo(track, d))} />
         ) : (
         <div className="sheet-body">
+            {favorites.length > 0 && (
+              <section className="lib-section lib-favs">
+                <h3>
+                  <span className="fav-star is-on" aria-hidden>★</span> {t('Favorites')} <span className="dim">{favorites.length}</span>
+                </h3>
+                <ul className="lib-list">
+                  {favorites.map((f) => {
+                    const row = favoriteRow(f, lib.tracks, t)
+                    return (
+                      row && (
+                        <TrackRow
+                          key={favoriteKey(f)}
+                          title={row.title}
+                          meta={row.meta}
+                          fav={f}
+                          onDeck={(deck) => sendTo(deck, row.load)}
+                        />
+                      )
+                    )
+                  })}
+                </ul>
+              </section>
+            )}
+
             <section className="lib-section">
               <h3>
                 {t('Your tracks')} <span className="dim">{lib.tracks.length || ''}</span>
@@ -103,6 +131,7 @@ export function LibrarySheet({ open, onClose, onLoaded }: Props) {
                       key={t.id}
                       title={t.name}
                       meta={trackMeta(t)}
+                      fav={{ type: 'track', id: t.id }}
                       onDeck={(deck) => sendTo(deck, (d) => library.loadTrack(t.id, d))}
                       onDelete={() => void library.removeTrack(t.id)}
                     />
@@ -119,6 +148,7 @@ export function LibrarySheet({ open, onClose, onLoaded }: Props) {
                     key={d.name}
                     title={d.name}
                     meta={t('{genre} · {bpm} BPM · {dur}', { genre: d.genre, bpm: d.bpm, dur: formatDuration(demoDuration(d.bpm)) })}
+                    fav={{ type: 'demo', name: d.name }}
                     onDeck={(deck) => sendTo(deck, (dk) => library.loadDemo(i, dk))}
                   />
                 ))}
@@ -163,11 +193,13 @@ export function LibrarySheet({ open, onClose, onLoaded }: Props) {
 function TrackRow({
   title,
   meta,
+  fav,
   onDeck,
   onDelete,
 }: {
   title: string
   meta: string
+  fav?: Favorite
   onDeck: (deck: Deck) => void
   onDelete?: () => void
 }) {
@@ -182,6 +214,7 @@ function TrackRow({
         <div className="lib-meta">{meta}</div>
       </div>
       <div className="lib-actions">
+        {fav && <FavButton fav={fav} title={title} />}
         <button className="btn btn-small btn-to-a" onClick={() => onDeck(a)} aria-label={t('Load {title} on deck {id}', { title, id: 'A' })}>
           A
         </button>
@@ -248,6 +281,27 @@ function RecordingRow({ rec, embedded }: { rec: RecordingMeta; embedded: boolean
       </div>
     </li>
   )
+}
+
+/** Title, details and loader for a favourite; null if it's no longer in the library. */
+function favoriteRow(
+  f: Favorite,
+  tracks: readonly TrackMeta[],
+  t: ReturnType<typeof useT>,
+): { title: string; meta: string; load: (d: Deck) => Promise<void> } | null {
+  if (f.type === 'track') {
+    const tr = tracks.find((x) => x.id === f.id)
+    return tr ? { title: tr.name, meta: trackMeta(tr), load: (d) => library.loadTrack(tr.id, d) } : null
+  }
+  if (f.type === 'demo') {
+    const i = DEMOS.findIndex((d) => d.name === f.name)
+    if (i < 0) return null
+    const d = DEMOS[i]
+    return { title: d.name, meta: t('{genre} · {bpm} BPM · {dur}', { genre: d.genre, bpm: d.bpm, dur: formatDuration(demoDuration(d.bpm)) }), load: (dk) => library.loadDemo(i, dk) }
+  }
+  const bpm = knownBpms()[f.track.id]
+  const meta = [f.track.artist, formatDuration(f.track.duration), bpm ? `${bpm.toFixed(bpm % 1 ? 1 : 0)} BPM` : '', `Jamendo · ${f.track.license}`].filter(Boolean).join(' · ')
+  return { title: f.track.name, meta, load: (d) => library.loadJamendo(f.track, d) }
 }
 
 /** Two-step delete: first tap arms it for 3 s, second tap deletes. */

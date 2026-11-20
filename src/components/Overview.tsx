@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import type { Deck, DeckState } from '../audio/deck'
-import { useAnimationFrame } from '../hooks/useEngine'
+import { useAnimationFrame, useStore } from '../hooks/useEngine'
+import { prefs } from '../library/prefs'
 import { HOT_CUE_COLORS } from './colors'
 
 /** Full-track waveform overview. Tap or drag to seek. */
@@ -9,6 +10,7 @@ export function Overview({ deck, state }: { deck: Deck; state: DeckState }) {
   const headRef = useRef<HTMLDivElement>(null)
   const playedRef = useRef<HTMLDivElement>(null)
   const { peaks, duration, cuePoint } = state
+  const { endWarning } = useStore(prefs)
 
   // Redraw the waveform when the track or the size changes.
   useEffect(() => {
@@ -66,6 +68,9 @@ export function Overview({ deck, state }: { deck: Deck; state: DeckState }) {
     >
       <canvas ref={canvasRef} />
       <div ref={playedRef} className="overview-played" />
+      {duration > endWarning && endWarning > 0 && (
+        <div className="overview-end" style={{ left: `${((duration - endWarning) / duration) * 100}%` }} aria-hidden />
+      )}
       {duration > 0 && state.loop && (
         <div
           className="overview-loop"
