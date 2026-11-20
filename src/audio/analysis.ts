@@ -30,7 +30,12 @@ const OVERVIEW_BINS = 1200
 const FPS = 200
 const MIN_BPM = 70
 const MAX_BPM = 180
+/** A clear pulse: accepted without further checks */
 const MIN_CLARITY = 2
+/** Below this the onset pattern is flat: no beat */
+const MIN_FLATNESS_CLARITY = 1.15
+/** Share of segments that must agree on the tempo when the pulse is weaker */
+const MIN_AGREEMENT = 0.5
 /** Off-beat vs on-beat snare energy needed to call double time */
 const DOUBLE_RATIO = 0.8
 /** Mean log-energy rise on the beat; tiny for steady tones and noise. */
@@ -145,7 +150,8 @@ export function detectTempo(mono: Float32Array, sampleRate: number): { bpm: numb
   const median = raw[raw.length >> 1]
   const clarity = median > 0 ? raw[raw.length - 1] / median : 0
   if (DEBUG) console.log('clarity', clarity.toFixed(2))
-  if (!(clarity >= MIN_CLARITY)) return { bpm: null, firstBeat: 0 }
+  // Too flat to be a beat at all (silence, steady noise).
+  if (!(clarity >= MIN_FLATNESS_CLARITY)) return { bpm: null, firstBeat: 0 }
   // Fine pass.
   let fine = { bpm: best.bpm, phase: best.phase, score: -Infinity }
   for (let bpm = best.bpm - 0.3; bpm <= best.bpm + 0.3; bpm += 0.01) {
@@ -175,6 +181,14 @@ export function detectTempo(mono: Float32Array, sampleRate: number): { bpm: numb
 
   if (DEBUG) console.log('beat strength', fine.score.toFixed(3))
   if (fine.score < MIN_STRENGTH) return { bpm: null, firstBeat: 0 }
+  // Real music often has a less pronounced pulse than a drum machine (vocals,
+  // reverb, live drums). Accept a clear pulse, or one that stays steady
+  // through the track; reject what only looks periodic by chance.
+  if (clarity < MIN_CLARITY) {
+    const agreement = segmentAgreement(onset, fine.bpm)
+    if (DEBUG) console.log('agreement', agreement.toFixed(2))
+    if (agreement < MIN_AGREEMENT) return { bpm: null, firstBeat: 0 }
+  }
 
   return { bpm: Math.round(fine.bpm * 100) / 100, firstBeat: fine.phase / FPS }
 }
@@ -262,6 +276,34 @@ function bestPhase(onset: Float32Array, bpm: number, phaseStep: number): { phase
 }
 
 /** Gentle preference for typical dance tempos (log-Gaussian around 125 BPM). */
+/**
+ * Share of the track's segments (≥8 s each) whose own best tempo agrees with
+ * `bpm` within 2 % (also at double / half time). A real beat is steady
+ * through the track; noise, pads and speech give a different "tempo" in
+ * every segment.
+ */
+function segmentAgreement(onset: Float32Array, bpm: number): number {
+  const segLen = Math.max(FPS * 8, Math.floor(onset.length / 4))
+  const segs: Float32Array[] = []
+  for (let start = 0; start + FPS * 6 <= onset.length; start += segLen) segs.push(onset.subarray(start, Math.min(onset.length, start + segLen)))
+  // Too short to check steadiness: don't vouch for it (a clear pulse still passes).
+  if (segs.length < 2) return 0
+  let agree = 0
+  for (const seg of segs) {
+    let best = 0
+    let bestScore = -Infinity
+    for (let b = MIN_BPM; b <= MAX_BPM; b += 0.5) {
+      const sc = bestPhase(seg, b, 1).score * tempoPrior(b)
+      if (sc > bestScore) {
+        bestScore = sc
+        best = b
+      }
+    }
+    if ([1, 2, 0.5].some((m) => Math.abs(best * m - bpm) / bpm < 0.02)) agree++
+  }
+  return agree / segs.length
+}
+
 function tempoPrior(bpm: number): number {
   const octaves = Math.log2(bpm / 125)
   return Math.exp(-0.5 * (octaves / 0.9) ** 2)

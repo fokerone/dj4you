@@ -3655,3 +3655,47 @@ kbd {
 .jam-license {
   white-space: nowrap;
 }
+
+/* ---------- tap tempo ---------- */
+
+button.deck-bpm {
+  border: 1px solid transparent;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  padding: 2px 6px;
+  margin: -2px -6px;
+  border-radius: 8px;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background 0.1s, border-color 0.1s;
+}
+
+button.deck-bpm:hover:not(:disabled) {
+  border-color: var(--line);
+  background: rgb(255 255 255 / 0.04);
+}
+
+button.deck-bpm:disabled {
+  cursor: default;
+  opacity: 1;
+}
+
+button.deck-bpm.is-empty:not(:disabled) span {
+  color: var(--accent);
+  font-weight: 800;
+}
+
+button.deck-bpm.is-tapping {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+button.deck-bpm.is-tapping span {
+  color: var(--accent);
+  font-weight: 800;
+}
+
+button.deck-bpm:active:not(:disabled) {
+  transform: scale(0.96);
+}

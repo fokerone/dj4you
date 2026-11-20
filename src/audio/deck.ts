@@ -480,6 +480,20 @@ export class Deck extends Store<DeckState> {
     return r
   }
 
+  /**
+   * Tap tempo: set the track's tempo by hand. `heardBpm` is what the user
+   * tapped (it includes the tempo fader); `beatAt` is a track position that
+   * falls on a beat (the last tap), used to place the beat grid.
+   */
+  setManualTempo(heardBpm: number, beatAt: number): void {
+    if (!this.buffer || !(heardBpm > 0)) return
+    const bpm = Math.round((heardBpm / this.rate) * 10) / 10
+    const beatLen = 60 / bpm
+    const firstBeat = ((beatAt % beatLen) + beatLen) % beatLen
+    this.set({ bpm, firstBeat })
+    this.updateEchoTime()
+  }
+
   setSyncLock(on: boolean): void {
     if (this.state.syncLock !== on) this.set({ syncLock: on })
   }

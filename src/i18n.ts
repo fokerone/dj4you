@@ -440,6 +440,8 @@ const ES: Record<string, string> = {
   House: 'House',
   'Hip-hop': 'Hip-hop',
   'Drum & bass': 'Drum & bass',
+  // tap tempo
+  'Tap in time with the beat (4 times or more) to set the tempo': 'Toca al ritmo del beat (4 veces o más) para fijar el tempo',
 }
 
 function detect(): Lang {

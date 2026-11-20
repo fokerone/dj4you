@@ -68,14 +68,7 @@ export function DeckView({ deck, other, onOpenLibrary }: { deck: Deck; other: De
             </span>
           </div>
         </div>
-        <div
-          className={`deck-bpm ${bpm === null ? 'is-empty' : ''}`}
-          aria-label={t('Tempo')}
-          title={bpm === null && deck.loaded && !state.analyzing ? t('No tempo detected') : undefined}
-        >
-          <b>{bpm === null ? (state.analyzing ? '···' : '—') : bpm.toFixed(1)}</b>
-          <span>BPM</span>
-        </div>
+        <TapTempo deck={deck} bpm={bpm} analyzing={state.analyzing} loaded={deck.loaded && !state.loading} />
         <div className="deck-load">
           <button className="btn btn-load" onClick={() => fileRef.current?.click()} aria-label={t('Load track')} title={t('Load a track from this device')}>
             <svg viewBox="0 0 24 24" aria-hidden>
@@ -244,5 +237,50 @@ function MarqueeTitle({ text, empty }: { text: string | null; empty: string }) {
         {text ?? empty}
       </span>
     </div>
+  )
+}
+
+/**
+ * BPM display that doubles as a TAP button: tap 4+ times in time with the
+ * music to set (or correct) the tempo and the beat grid.
+ */
+function TapTempo({ deck, bpm, analyzing, loaded }: { deck: Deck; bpm: number | null; analyzing: boolean; loaded: boolean }) {
+  const t = useT()
+  const taps = useRef<{ time: number; pos: number }[]>([])
+  const [count, setCount] = useState(0)
+  const reset = useRef(0)
+
+  const tap = () => {
+    if (!loaded) return
+    const now = performance.now()
+    const list = taps.current
+    if (list.length && now - list[list.length - 1].time > 2000) list.length = 0
+    list.push({ time: now, pos: deck.position })
+    if (list.length > 8) list.shift()
+    setCount(list.length)
+    window.clearTimeout(reset.current)
+    reset.current = window.setTimeout(() => {
+      taps.current = []
+      setCount(0)
+    }, 2200)
+    if (list.length >= 4) {
+      const span = (list[list.length - 1].time - list[0].time) / 1000
+      const heard = (60 * (list.length - 1)) / span
+      if (heard >= 60 && heard <= 200) deck.setManualTempo(heard, list[list.length - 1].pos)
+    }
+  }
+
+  const tapping = count > 0
+  return (
+    <button
+      className={`deck-bpm ${bpm === null ? 'is-empty' : ''} ${tapping ? 'is-tapping' : ''}`}
+      disabled={!loaded}
+      onClick={tap}
+      aria-label={t('Tempo')}
+      title={t('Tap in time with the beat (4 times or more) to set the tempo')}
+    >
+      <b>{bpm === null ? (analyzing ? '···' : '—') : bpm.toFixed(1)}</b>
+      <span>{tapping ? (count < 4 ? `TAP ${count}/4` : 'TAP ✓') : bpm === null && loaded && !analyzing ? 'TAP' : 'BPM'}</span>
+    </button>
   )
 }
