@@ -1982,9 +1982,9 @@ body[data-coach='load-b'] .lib-row .btn-to-b {
 .welcome {
   display: flex;
   flex-direction: column;
+  justify-items: unset;
   align-items: center;
   gap: 20px;
-  place-items: unset;
   background:
     radial-gradient(60% 50% at 15% 10%, rgb(34 211 238 / 0.2), transparent),
     radial-gradient(55% 45% at 90% 90%, rgb(251 146 60 / 0.18), transparent),
