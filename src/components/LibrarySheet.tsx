@@ -21,6 +21,8 @@ interface Props {
   onLoaded: (deck: DeckId) => void
 }
 
+const VIEW_KEY = 'dj4you.libraryView'
+
 /** Track library: your saved tracks, the demo starter pack and recorded mixes. */
 export function LibrarySheet({ open, onClose, onLoaded }: Props) {
   const t = useT()
@@ -29,7 +31,21 @@ export function LibrarySheet({ open, onClose, onLoaded }: Props) {
   const { favorites } = useStore(prefs)
   const fileRef = useRef<HTMLInputElement>(null)
   const closeRef = useRef<HTMLButtonElement>(null)
-  const [view, setView] = useState<'mine' | 'free'>('mine')
+  const [view, setViewState] = useState<'mine' | 'free'>(() => {
+    try {
+      return localStorage.getItem(VIEW_KEY) === 'free' ? 'free' : 'mine'
+    } catch {
+      return 'mine'
+    }
+  })
+  const setView = (v: 'mine' | 'free') => {
+    setViewState(v)
+    try {
+      localStorage.setItem(VIEW_KEY, v)
+    } catch {
+      /* not kept */
+    }
+  }
 
   useEffect(() => {
     if (!open) return

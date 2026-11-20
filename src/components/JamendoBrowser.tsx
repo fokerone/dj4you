@@ -8,18 +8,49 @@ import { GENRES, jamendoAvailable, type JamendoTrack, knownBpms, searchJamendo }
 
 type Status = 'idle' | 'loading' | 'ready' | 'error'
 
+const GENRE_KEY = 'dj4you.jamendoGenre'
+
+/**
+ * What the browser showed last, kept while the app is open so leaving the
+ * tab or the library and coming back shows the same style, search and list
+ * (the style is also remembered for the next visit).
+ */
+const last: { query: string; genre: string; tracks: JamendoTrack[]; hasMore: boolean; key: string | null } = {
+  query: '',
+  genre: savedGenre(),
+  tracks: [],
+  hasMore: false,
+  key: null,
+}
+
+function savedGenre(): string {
+  try {
+    const g = localStorage.getItem(GENRE_KEY)
+    if (g !== null && GENRES.some((x) => x.id === g)) return g
+  } catch {
+    /* not available */
+  }
+  return 'house'
+}
+
 /** Browse and search Creative Commons music on Jamendo, load onto a deck. */
 export function JamendoBrowser({ onPick }: { onPick: (track: JamendoTrack, deck: Deck) => void }) {
   const t = useT()
-  const [query, setQuery] = useState('')
-  const [debounced, setDebounced] = useState('')
-  const [genre, setGenre] = useState<string>('house')
-  const [tracks, setTracks] = useState<JamendoTrack[]>([])
-  const [hasMore, setHasMore] = useState(false)
-  const [status, setStatus] = useState<Status>('idle')
+  const [query, setQuery] = useState(last.query)
+  const [debounced, setDebounced] = useState(last.query)
+  const [genre, setGenre] = useState<string>(last.genre)
+  const [tracks, setTracks] = useState<JamendoTrack[]>(last.tracks)
+  const [hasMore, setHasMore] = useState(last.hasMore)
+  const [status, setStatus] = useState<Status>(last.tracks.length ? 'ready' : 'idle')
   const [retry, setRetry] = useState(0)
   const abort = useRef<AbortController | null>(null)
   const bodyRef = useRef<HTMLDivElement>(null)
+  const chipsRef = useRef<HTMLDivElement>(null)
+
+  // Bring the remembered style into view (it may be further along the row).
+  useEffect(() => {
+    chipsRef.current?.querySelector<HTMLElement>('[aria-checked="true"]')?.scrollIntoView({ block: 'nearest', inline: 'center' })
+  }, [])
   const available = jamendoAvailable()
   // Re-render when a deck finishes analysing, so a newly detected BPM shows up.
   useStore(engine.decks[0])
@@ -45,7 +76,11 @@ export function JamendoBrowser({ onPick }: { onPick: (track: JamendoTrack, deck:
     }
     searchJamendo({ query: debounced, genre, offset, signal: ac.signal })
       .then((page) => {
-        setTracks((prev) => (offset === 0 ? [...page.tracks] : [...prev, ...page.tracks]))
+        setTracks((prev) => {
+          const next = offset === 0 ? [...page.tracks] : [...prev, ...page.tracks]
+          Object.assign(last, { tracks: next, hasMore: page.hasMore, key: `${genre}|${debounced}` })
+          return next
+        })
         setHasMore(page.hasMore)
         setStatus('ready')
       })
@@ -55,7 +90,22 @@ export function JamendoBrowser({ onPick }: { onPick: (track: JamendoTrack, deck:
   }
 
   useEffect(() => {
+    last.query = query
+  }, [query])
+
+  useEffect(() => {
+    last.genre = genre
+    try {
+      localStorage.setItem(GENRE_KEY, genre)
+    } catch {
+      /* not kept */
+    }
+  }, [genre])
+
+  useEffect(() => {
     if (!available) return
+    // Coming back to the same style and search: keep the list already shown.
+    if (retry === 0 && last.key === `${genre}|${debounced}` && last.tracks.length) return
     load(0)
     return () => abort.current?.abort()
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -84,7 +134,7 @@ export function JamendoBrowser({ onPick }: { onPick: (track: JamendoTrack, deck:
           aria-label={t('Search free music')}
           onChange={(e) => setQuery(e.target.value)}
         />
-        <div className="help-nav" role="radiogroup" aria-label={t('Genre')}>
+        <div ref={chipsRef} className="help-nav" role="radiogroup" aria-label={t('Genre')}>
           {GENRES.map((g) => (
             <button key={g.id || 'all'} role="radio" aria-checked={genre === g.id} className={`help-chip ${genre === g.id ? 'is-on' : ''}`} onClick={() => setGenre(g.id)}>
               {g.id ? t(g.label) : t('All')}
