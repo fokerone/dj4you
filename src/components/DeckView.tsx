@@ -20,8 +20,9 @@ export function DeckView({ deck, other, onOpenLibrary }: { deck: Deck; other: De
 
   useAnimationFrame(() => {
     const pos = deck.position
-    if (elapsedRef.current) elapsedRef.current.textContent = formatTime(pos)
-    if (remainRef.current) remainRef.current.textContent = `-${formatTime(state.duration - pos)}`
+    const empty = !state.duration
+    if (elapsedRef.current) elapsedRef.current.textContent = empty ? '–:––' : formatTime(pos)
+    if (remainRef.current) remainRef.current.textContent = empty ? '' : `-${formatTime(state.duration - pos)}`
   })
 
   const loadFile = (file: File | undefined) => {
@@ -52,8 +53,8 @@ export function DeckView({ deck, other, onOpenLibrary }: { deck: Deck; other: De
       <header className="deck-head">
         <span className="deck-badge">{state.id}</span>
         <div className="deck-track">
-          <div className="deck-title" title={state.trackName ?? undefined}>
-            {state.error ?? state.trackName ?? t('Load a track or open the Library')}
+          <div className={`deck-title ${state.trackName ? '' : 'is-empty'}`} title={state.trackName ?? undefined}>
+            {state.trackName ?? t('No track')}
           </div>
           <div className="deck-clock">
             <span ref={elapsedRef}>0:00.0</span>
@@ -62,8 +63,12 @@ export function DeckView({ deck, other, onOpenLibrary }: { deck: Deck; other: De
             </span>
           </div>
         </div>
-        <div className="deck-bpm" aria-label={t('Tempo')}>
-          <b>{bpm === null ? (state.analyzing ? '…' : '--') : bpm.toFixed(1)}</b>
+        <div
+          className={`deck-bpm ${bpm === null ? 'is-empty' : ''}`}
+          aria-label={t('Tempo')}
+          title={bpm === null && deck.loaded && !state.analyzing ? t('No tempo detected') : undefined}
+        >
+          <b>{bpm === null ? (state.analyzing ? '···' : '—') : bpm.toFixed(1)}</b>
           <span>BPM</span>
         </div>
         <div className="deck-load">
@@ -92,7 +97,7 @@ export function DeckView({ deck, other, onOpenLibrary }: { deck: Deck; other: De
         />
       </header>
 
-      <WaveView deck={deck} state={state} />
+      <WaveView deck={deck} state={state} onOpenLibrary={onOpenLibrary} onPickFile={() => fileRef.current?.click()} />
       <Overview deck={deck} state={state} />
 
       <div className="deck-body">

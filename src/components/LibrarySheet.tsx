@@ -71,7 +71,9 @@ export function LibrarySheet({ open, onClose, onLoaded }: Props) {
             {lib.unavailable && (
               <p className="lib-note">{t("This browser is blocking storage, so tracks play but won't be kept after you close the page.")}</p>
             )}
-            {lib.tracks.length === 0 ? (
+            {!lib.ready ? (
+              <p className="lib-empty">{t('Loading your library…')}</p>
+            ) : lib.tracks.length === 0 ? (
               <p className="lib-empty">
                 {t("Tracks you load are kept here on this device, so they're ready next time. Nothing is uploaded. Tap Add tracks or load a file onto a deck.")}
               </p>

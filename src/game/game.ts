@@ -7,23 +7,27 @@ import { t } from '../i18n'
 import { buzz } from './haptics'
 
 /**
- * The game layer: watches what the DJ does (never touches the audio) and turns
- * it into crowd energy, points, combos, achievements and a first-mix quest.
- *
- * Rules of thumb it rewards — the same things that make a real set good:
- *  - keep the music going (no dead air)
- *  - blend tracks with matched tempo and aligned beats
- *  - finish transitions cleanly; long, in-sync blends score best
- *  - don't let one track run forever; the crowd wants new music
+ * The "coach": watches what the DJ does (it never touches the audio) and turns
+ * it into gentle feedback — a quiet "nice transition", a helpful hint when beats
+ * clash, achievements, and the first-mix tutorial. No scores, no penalties:
+ * the goal is that mixing feels rewarding, not that it's graded.
  */
 
-export type EventKind = 'great' | 'good' | 'bad' | 'info' | 'achievement'
+export type NoteKind = 'success' | 'achievement' | 'info'
 
-export interface GameEvent {
+export interface Note {
   readonly id: number
-  readonly kind: EventKind
+  readonly kind: NoteKind
   readonly text: string
   readonly sub?: string
+}
+
+/** A contextual tip with an optional one-tap fix. */
+export interface Hint {
+  readonly id: 'clash' | 'silence' | 'tempo'
+  readonly text: string
+  /** Deck to SYNC when the user taps the fix button */
+  readonly syncDeck?: 'A' | 'B'
 }
 
 export interface QuestStep {
@@ -32,44 +36,39 @@ export interface QuestStep {
   readonly text: string
 }
 
-export interface GameState {
-  /** Crowd energy 0..100 */
-  readonly energy: number
-  readonly score: number
-  readonly combo: number
-  readonly multiplier: number
-  /** Lifetime XP (persisted) */
-  readonly xp: number
-  readonly level: number
-  readonly levelTitle: string
-  /** 0..1 progress to the next level */
-  readonly levelProgress: number
+export interface CoachState {
   /** Beat offset between decks in beats (-0.5..0.5), null if not comparable */
   readonly phaseDiff: number | null
-  /** Both decks audible with matched tempo and aligned beats */
+  /** Why the phase can't be compared right now (for the phase meter) */
+  readonly phaseReason: 'ok' | 'stopped' | 'tempo' | 'nobpm'
+  /** Both decks audible with aligned beats */
   readonly inSync: boolean
-  /** Both decks audible but beats clash */
   readonly clashing: boolean
-  readonly events: readonly GameEvent[]
+  readonly notes: readonly Note[]
+  readonly hint: Hint | null
   readonly achievements: readonly string[]
-  /** Index into QUEST, or -1 when the quest is off / done */
+  /** Index into QUEST, or -1 when the tutorial is off / done */
   readonly questStep: number
   readonly questDone: boolean
+  /** Session stats shown in the menu */
+  readonly transitions: number
+  readonly mixSeconds: number
 }
 
 export const ACHIEVEMENTS: Record<string, { title: string; text: string }> = {
   'first-play': { title: 'Needle drop', text: 'Play your first track' },
   sync: { title: 'Locked in', text: 'Match two tracks with SYNC' },
   'first-mix': { title: 'First mix', text: 'Finish a transition between decks' },
-  perfect: { title: 'Perfect blend', text: 'Land a perfect transition' },
-  combo3: { title: 'On fire', text: 'Reach a x3 combo' },
+  perfect: { title: 'Perfect blend', text: 'Blend two tracks in time for 4 seconds or more' },
+  streak: { title: 'In the groove', text: 'Make 3 smooth transitions in a row' },
   loop: { title: 'Loop it', text: 'Use a beat loop' },
-  fx: { title: 'Effects wizard', text: 'Play with echo or reverb' },
   cues: { title: 'Hot cue hero', text: 'Set all 4 hot cues on a deck' },
-  peak: { title: 'Peak time', text: 'Get the crowd to 100% energy' },
+  fx: { title: 'Effects wizard', text: 'Play with echo or reverb' },
+  filter: { title: 'Filter sweep', text: 'Sweep the filter while a track plays' },
+  'bass-swap': { title: 'Bass swap', text: 'Cut the bass on one deck while blending' },
   rec: { title: 'On the record', text: 'Record a mix' },
   live: { title: 'On air', text: 'Go live to listeners' },
-  '10k': { title: '10K club', text: 'Score 10,000 points in one session' },
+  marathon: { title: 'Marathon', text: 'Keep the music going for 10 minutes' },
 }
 
 export const QUEST: readonly QuestStep[] = [
@@ -82,7 +81,6 @@ export const QUEST: readonly QuestStep[] = [
   { id: 'crossfade', title: 'The transition', text: 'Slowly slide the crossfader all the way to B. Take a few seconds!' },
 ]
 
-const LEVELS = ['Bedroom DJ', 'Party Starter', 'Warm-up DJ', 'Club Resident', 'Headliner', 'Festival Legend', 'Hall of Fame']
 const STORE_KEY = 'dj4you.game.v1'
 const TICK = 0.25 // seconds
 /** A deck counts as heard above this gain (volume² × crossfader). */
@@ -92,7 +90,6 @@ const PERFECT_BLEND = 4
 const SMOOTH_BLEND = 1.5
 
 interface Persisted {
-  xp: number
   achievements: string[]
   questDone: boolean
 }
@@ -100,326 +97,91 @@ interface Persisted {
 function load(): Persisted {
   try {
     const raw = JSON.parse(localStorage.getItem(STORE_KEY) ?? 'null') as Partial<Persisted> | null
-    return { xp: Number(raw?.xp) || 0, achievements: Array.isArray(raw?.achievements) ? raw.achievements : [], questDone: raw?.questDone === true }
+    // Older versions also stored xp / score-based badges; keep what still exists.
+    const ach = Array.isArray(raw?.achievements) ? raw.achievements.filter((a) => a in ACHIEVEMENTS) : []
+    return { achievements: ach, questDone: raw?.questDone === true }
   } catch {
-    return { xp: 0, achievements: [], questDone: false }
+    return { achievements: [], questDone: false }
   }
 }
 
-function levelInfo(xp: number): { level: number; title: string; progress: number } {
-  // Each level needs a bit more: 2.5k, 10k, 22.5k, 40k ...
-  const level = Math.floor(Math.sqrt(xp / 2500)) + 1
-  const lo = 2500 * (level - 1) ** 2
-  const hi = 2500 * level ** 2
-  return { level, title: LEVELS[Math.min(LEVELS.length - 1, level - 1)], progress: (xp - lo) / (hi - lo) }
-}
-
-export class Game extends Store<GameState> {
+export class Coach extends Store<CoachState> {
   private readonly engine: AudioEngine
   private nextId = 1
   private scratch = new Float32Array(1024)
-  // per-session counters
-  private deadAir = 0
-  private deadWarned = false
   private blendSecs = 0
   private clashSecs = 0
-  private clashWarned = false
+  private silentSecs = 0
+  private everPlayed = false
   private dominant: Deck | null = null
-  private dominantSecs = 0
-  private boredWarned = false
-  private lastSave = 0
-  private ticking = 0
+  private streak = 0
+  private lastFilter = [0, 0]
   private nextAchievementAt = 0
+  private hintDismissed = new Map<Hint['id'], number>()
+  private ticking = 0
 
   constructor(engine: AudioEngine) {
     const p = load()
-    const lv = levelInfo(p.xp)
     super({
-      energy: 30,
-      score: 0,
-      combo: 0,
-      multiplier: 1,
-      xp: p.xp,
-      level: lv.level,
-      levelTitle: lv.title,
-      levelProgress: lv.progress,
       phaseDiff: null,
+      phaseReason: 'stopped',
       inSync: false,
       clashing: false,
-      events: [],
+      notes: [],
+      hint: null,
       achievements: p.achievements,
       questStep: -1,
       questDone: p.questDone,
+      transitions: 0,
+      mixSeconds: 0,
     })
     this.engine = engine
     this.ticking = window.setInterval(() => this.tick(), TICK * 1000)
   }
 
-  // ---------------------------------------------------------------- quest
+  // ---------------------------------------------------------------- public
 
   startQuest(): void {
     this.set({ questStep: 0 })
-    this.syncCoach()
+    this.syncCoachMarks()
   }
 
   skipQuest(): void {
     this.set({ questStep: -1, questDone: true })
     this.save()
-    this.syncCoach()
+    this.syncCoachMarks()
   }
 
-  /** Highlights the control the current quest step is about (CSS hooks on body). */
-  private syncCoach(): void {
-    const step = QUEST[this.state.questStep]
-    if (step) document.body.dataset.coach = step.id
-    else delete document.body.dataset.coach
+  /** Show a short message (also used by other parts of the app). */
+  notify(kind: NoteKind, text: string, sub?: string): void {
+    const note: Note = { id: this.nextId++, kind, text, sub }
+    this.set({ notes: [...this.state.notes.slice(-2), note] })
+    window.setTimeout(() => this.set({ notes: this.state.notes.filter((n) => n.id !== note.id) }), kind === 'achievement' ? 4000 : 2600)
   }
 
-  private questCheck(a: Deck, b: Deck, xf: number): boolean {
-    const sa = a.getSnapshot()
-    const sb = b.getSnapshot()
-    switch (QUEST[this.state.questStep]?.id) {
-      case 'load-a':
-        return a.loaded
-      case 'play-a':
-        return sa.playing
-      case 'xf-a':
-        return xf < 0.08
-      case 'load-b':
-        return b.loaded
-      case 'play-b':
-        return sb.playing
-      case 'sync-b':
-        return this.state.inSync || (tempoMatch(a, b) && this.state.phaseDiff !== null && Math.abs(this.state.phaseDiff) < 0.08)
-      case 'crossfade':
-        return xf > 0.92
-      default:
-        return false
-    }
+  /** Hide the current hint for a while. */
+  dismissHint(): void {
+    const h = this.state.hint
+    if (h) this.hintDismissed.set(h.id, Date.now() + 45_000)
+    this.set({ hint: null })
   }
 
-  // ---------------------------------------------------------------- events
-
-  emit(kind: EventKind, text: string, sub?: string): void {
-    const ev: GameEvent = { id: this.nextId++, kind, text, sub }
-    this.set({ events: [...this.state.events.slice(-3), ev] })
-    window.setTimeout(() => this.set({ events: this.state.events.filter((e) => e.id !== ev.id) }), kind === 'achievement' ? 3800 : 2200)
+  /** One-tap fix offered by a hint. */
+  applyHint(): void {
+    const h = this.state.hint
+    if (!h?.syncDeck) return
+    const [a, b] = this.engine.decks
+    if (h.syncDeck === 'A') a.syncTo(b)
+    else b.syncTo(a)
+    this.set({ hint: null })
   }
 
-  private unlock(id: string): void {
-    if (this.state.achievements.includes(id)) return
-    this.set({ achievements: [...this.state.achievements, id] })
-    const a = ACHIEVEMENTS[id]
-    // Queue unlocks so several at once appear one after another.
-    const delay = Math.max(0, this.nextAchievementAt - Date.now())
-    this.nextAchievementAt = Date.now() + delay + 1800
-    window.setTimeout(() => {
-      this.emit('achievement', t(a.title), t(a.text))
-      buzz([30, 40, 60])
-    }, delay)
+  resetProgress(): void {
+    this.set({ achievements: [], questDone: false })
     this.save()
   }
 
-  private addPoints(points: number): void {
-    const p = Math.round(points * this.state.multiplier * (0.5 + this.state.energy / 100))
-    const xp = this.state.xp + p
-    const lv = levelInfo(xp)
-    if (lv.level > this.state.level) {
-      this.emit('great', t('LEVEL {n}', { n: lv.level }), t(lv.title))
-      buzz([40, 30, 40, 30, 80])
-    }
-    this.set({ score: this.state.score + p, xp, level: lv.level, levelTitle: lv.title, levelProgress: lv.progress })
-    if (this.state.score >= 10_000) this.unlock('10k')
-  }
-
-  private setCombo(combo: number): void {
-    this.set({ combo, multiplier: Math.min(5, 1 + combo * 0.5) })
-    if (combo >= 3) this.unlock('combo3')
-  }
-
-  private save(): void {
-    try {
-      localStorage.setItem(
-        STORE_KEY,
-        JSON.stringify({ xp: this.state.xp, achievements: [...this.state.achievements], questDone: this.state.questDone } satisfies Persisted),
-      )
-    } catch {
-      /* private mode: progress lasts for this session */
-    }
-  }
-
-  // ---------------------------------------------------------------- tick
-
-  private tick(): void {
-    const { decks, mixer, recorder, live } = this.engine
-    const [a, b] = decks
-    const mx = mixer.getSnapshot()
-    const xf = crossfaderGains(mx.crossfader, mx.curve)
-    const weights = decks.map((d, i) => {
-      const s = d.getSnapshot()
-      return s.playing ? s.volume * s.volume * xf[i] : 0
-    })
-    const masterPeak = readPeak(mixer.masterMeter, this.scratch)
-    const audible = decks.filter((_, i) => weights[i] > AUDIBLE)
-    let energy = this.state.energy
-
-    // Beat alignment between decks (same tempo only)
-    let phaseDiff: number | null = null
-    const both = a.getSnapshot().playing && b.getSnapshot().playing
-    if (both && tempoMatch(a, b)) {
-      const pa = a.beatPhase()
-      const pb = b.beatPhase()
-      if (pa !== null && pb !== null) {
-        phaseDiff = pb - pa
-        phaseDiff -= Math.round(phaseDiff)
-      }
-    }
-    const blending = audible.length === 2
-    const inSync = blending && phaseDiff !== null && Math.abs(phaseDiff) < 0.06
-    const clashing = blending && !inSync
-
-    // Dead air
-    if (audible.length === 0 || masterPeak < 0.003) {
-      this.deadAir += TICK
-      if (this.deadAir > 1.5) {
-        energy -= 2
-        if (!this.deadWarned && this.state.score > 0) {
-          this.emit('bad', t('DEAD AIR'), t('Keep the music playing!'))
-          this.deadWarned = true
-          buzz(120)
-        }
-        if (this.state.combo) this.setCombo(0)
-      }
-    } else {
-      this.deadAir = 0
-      this.deadWarned = false
-    }
-
-    if (audible.length === 1) {
-      energy += energy < 60 ? 0.35 : 0.04
-      this.addPoints(5)
-    } else if (inSync) {
-      energy += 0.55
-      this.blendSecs += TICK
-      this.addPoints(25)
-    } else if (clashing) {
-      this.clashSecs += TICK
-      if (this.clashSecs >= 1) {
-        energy -= 1.2
-        if (!this.clashWarned) {
-          this.emit('bad', t('TRAINWRECK'), t('Beats are clashing: use SYNC or the jog wheel'))
-          this.clashWarned = true
-          buzz([80, 40, 80])
-          this.setCombo(0)
-        }
-      }
-    }
-    if (!blending) {
-      this.clashWarned = false
-    }
-
-    // Effects and loops add a little spice while music plays
-    for (const d of decks) {
-      const s = d.getSnapshot()
-      if (!s.playing) continue
-      if (s.loop) this.unlock('loop')
-      if (s.echoOn || s.reverbOn) {
-        this.unlock('fx')
-        energy += 0.06
-      }
-      if (s.hotCues.every((c) => c !== null)) this.unlock('cues')
-      this.unlock('first-play')
-    }
-    if (tempoMatch(a, b) && (a.getSnapshot().pitch !== 0 || b.getSnapshot().pitch !== 0) && a.getSnapshot().bpm !== b.getSnapshot().bpm) this.unlock('sync')
-
-    // Transitions: the main deck changes from one to the other
-    const dom = this.dominantDeck(weights)
-    if (dom && this.dominant && dom !== this.dominant) this.finishTransition()
-    if (dom) {
-      if (dom === this.dominant) this.dominantSecs += TICK
-      else this.dominantSecs = 0
-      this.dominant = dom
-    }
-    if (!blending && audible.length === 1 && this.blendSecs > 0 && dom === this.dominant) {
-      // Blend abandoned without switching: no reward, start fresh next time.
-      this.blendSecs = 0
-      this.clashSecs = 0
-    }
-    if (this.dominantSecs > 150 && !blending) {
-      energy -= 0.12
-      if (!this.boredWarned) {
-        this.emit('info', t('The crowd wants something new'), t('Mix in the next track'))
-        this.boredWarned = true
-      }
-    }
-
-    energy = Math.max(0, Math.min(100, energy))
-    if (energy >= 100) this.unlock('peak')
-    if (recorder.getSnapshot().recording) this.unlock('rec')
-    if (live.getSnapshot().status === 'live') this.unlock('live')
-
-    this.set({ energy, phaseDiff, inSync, clashing })
-
-    // Quest
-    if (this.state.questStep >= 0 && this.questCheck(a, b, mx.crossfader)) {
-      const next = this.state.questStep + 1
-      buzz(25)
-      if (next >= QUEST.length) {
-        this.set({ questStep: -1, questDone: true })
-        this.emit('great', t('MISSION COMPLETE'), t("You're a DJ now. Keep the crowd going!"))
-        this.addPoints(2000)
-        this.save()
-      } else {
-        this.emit('info', `✓ ${t(QUEST[this.state.questStep].title)}`)
-        this.set({ questStep: next })
-      }
-      this.syncCoach()
-    }
-
-    if (performance.now() - this.lastSave > 10_000) {
-      this.lastSave = performance.now()
-      this.save()
-    }
-  }
-
-  private finishTransition(): void {
-    const blend = this.blendSecs
-    const clash = this.clashSecs
-    this.blendSecs = 0
-    this.clashSecs = 0
-    this.dominantSecs = 0
-    this.boredWarned = false
-    if (clash >= 1.5) return // the trainwreck warning already said it
-    if (blend >= PERFECT_BLEND) {
-      this.setCombo(this.state.combo + 1)
-      this.emit('great', t('PERFECT TRANSITION'), t('{n}s seamless blend', { n: blend.toFixed(0) }))
-      this.addPoints(1500)
-      this.set({ energy: Math.min(100, this.state.energy + 12) })
-      this.unlock('perfect')
-      buzz([30, 30, 30, 30, 120])
-    } else if (blend >= SMOOTH_BLEND) {
-      this.setCombo(this.state.combo + 1)
-      this.emit('good', t('SMOOTH MIX'), t('Blend longer for a perfect transition'))
-      this.addPoints(600)
-      this.set({ energy: Math.min(100, this.state.energy + 6) })
-      buzz([30, 40, 60])
-    } else {
-      this.emit('info', t('QUICK CUT'), t('Try a slow crossfade with SYNC on'))
-      this.addPoints(200)
-    }
-    this.unlock('first-mix')
-  }
-
-  private dominantDeck(weights: number[]): Deck | null {
-    const [wa, wb] = weights
-    if (Math.max(wa, wb) < AUDIBLE) return null
-    // Hysteresis: the other deck must clearly take over.
-    if (this.dominant === this.engine.decks[0]) return wb > wa * 1.4 ? this.engine.decks[1] : this.engine.decks[0]
-    if (this.dominant === this.engine.decks[1]) return wa > wb * 1.4 ? this.engine.decks[0] : this.engine.decks[1]
-    return wa >= wb ? this.engine.decks[0] : this.engine.decks[1]
-  }
-
-  /** 0..1 beat pulse of the main deck (1 on the beat, decaying) for visuals. */
+  /** 0..1 beat pulse of the main deck for ambient visuals. */
   pulse(): number {
     const d = this.dominant
     if (!d || !d.getSnapshot().playing) return 0
@@ -427,9 +189,205 @@ export class Game extends Store<GameState> {
     return ph === null ? 0 : (1 - ph) ** 4
   }
 
-  /** 0 = deck A is the main deck, 1 = deck B, for colouring the stage. */
-  side(): number {
-    return this.engine.mixer.getSnapshot().crossfader
+  /** How much of each deck is heard, 0..1 each (for ambient colour). */
+  presence(): [number, number] {
+    const mx = this.engine.mixer.getSnapshot()
+    const xf = crossfaderGains(mx.crossfader, mx.curve)
+    return this.engine.decks.map((d, i) => {
+      const s = d.getSnapshot()
+      return s.playing ? Math.min(1, s.volume * s.volume * xf[i] * 1.6) : 0
+    }) as [number, number]
+  }
+
+  // ---------------------------------------------------------------- internals
+
+  private syncCoachMarks(): void {
+    const step = QUEST[this.state.questStep]
+    if (step) document.body.dataset.coach = step.id
+    else delete document.body.dataset.coach
+  }
+
+  private unlock(id: string): void {
+    if (this.state.achievements.includes(id)) return
+    this.set({ achievements: [...this.state.achievements, id] })
+    this.save()
+    const a = ACHIEVEMENTS[id]
+    // Several unlocks at once appear one after another.
+    const delay = Math.max(0, this.nextAchievementAt - Date.now())
+    this.nextAchievementAt = Date.now() + delay + 2000
+    window.setTimeout(() => {
+      this.notify('achievement', t(a.title), t(a.text))
+      buzz([20, 40, 40])
+    }, delay)
+  }
+
+  private save(): void {
+    try {
+      localStorage.setItem(STORE_KEY, JSON.stringify({ achievements: [...this.state.achievements], questDone: this.state.questDone } satisfies Persisted))
+    } catch {
+      /* private mode: progress lasts for this session */
+    }
+  }
+
+  private tick(): void {
+    const { decks, mixer, recorder, live } = this.engine
+    const [a, b] = decks
+    const sa = a.getSnapshot()
+    const sb = b.getSnapshot()
+    const mx = mixer.getSnapshot()
+    const xf = crossfaderGains(mx.crossfader, mx.curve)
+    const weights = [sa, sb].map((s, i) => (s.playing ? s.volume * s.volume * xf[i] : 0))
+    const audible = weights.filter((w) => w > AUDIBLE).length
+    const masterPeak = readPeak(mixer.masterMeter, this.scratch)
+
+    // Beat alignment
+    let phaseDiff: number | null = null
+    let phaseReason: CoachState['phaseReason'] = 'ok'
+    if (!sa.playing || !sb.playing) phaseReason = 'stopped'
+    else if (sa.bpm === null || sb.bpm === null) phaseReason = 'nobpm'
+    else if (!tempoMatch(a, b)) phaseReason = 'tempo'
+    else {
+      const pa = a.beatPhase()
+      const pb = b.beatPhase()
+      if (pa !== null && pb !== null) {
+        phaseDiff = pb - pa
+        phaseDiff -= Math.round(phaseDiff)
+      }
+    }
+    const blending = audible === 2
+    const inSync = blending && phaseDiff !== null && Math.abs(phaseDiff) < 0.06
+    const clashing = blending && !inSync
+
+    if (inSync) this.blendSecs += TICK
+    if (clashing) this.clashSecs += TICK
+
+    // Silence after music has played
+    const playing = audible > 0 && masterPeak > 0.003
+    if (playing) {
+      this.everPlayed = true
+      this.silentSecs = 0
+      this.set({ mixSeconds: this.state.mixSeconds + TICK })
+      if (this.state.mixSeconds >= 600) this.unlock('marathon')
+    } else this.silentSecs += TICK
+
+    // Transitions: the main deck changes from one to the other
+    const dom = this.dominantDeck(weights)
+    if (dom && this.dominant && dom !== this.dominant) this.finishTransition()
+    if (dom) this.dominant = dom
+    if (!blending && this.blendSecs > 0 && audible === 1 && dom === this.dominant) {
+      // Blend abandoned without switching: start fresh next time.
+      this.blendSecs = 0
+      this.clashSecs = 0
+    }
+
+    // Achievements from what's happening
+    for (const [i, s] of [sa, sb].entries()) {
+      if (!s.playing) continue
+      this.unlock('first-play')
+      if (s.loop) this.unlock('loop')
+      if (s.echoOn || s.reverbOn) this.unlock('fx')
+      if (s.hotCues.every((c) => c !== null)) this.unlock('cues')
+      if (Math.abs(s.filter - this.lastFilter[i]) > 0.25 && Math.abs(s.filter) > 0.4) this.unlock('filter')
+      if (blending && s.eq.low < -0.8) this.unlock('bass-swap')
+    }
+    this.lastFilter = [sa.filter, sb.filter]
+    if (tempoMatch(a, b) && sa.bpm !== sb.bpm && (sa.pitch !== 0 || sb.pitch !== 0)) this.unlock('sync')
+    if (recorder.getSnapshot().recording) this.unlock('rec')
+    if (live.getSnapshot().status === 'live') this.unlock('live')
+
+    this.set({ phaseDiff, phaseReason, inSync, clashing, hint: this.pickHint(clashing, a, b) })
+    this.tickQuest(a, b, mx.crossfader)
+  }
+
+  /** At most one calm, actionable tip at a time. */
+  private pickHint(clashing: boolean, a: Deck, b: Deck): Hint | null {
+    const allowed = (id: Hint['id']) => (this.hintDismissed.get(id) ?? 0) < Date.now()
+    // Don't talk over the tutorial; it already explains each step.
+    if (this.state.questStep >= 0) return null
+    if (clashing && this.clashSecs >= 1.5 && allowed('clash')) {
+      const quieter = this.dominant === b ? 'A' : 'B'
+      const canSync = a.getSnapshot().bpm !== null && b.getSnapshot().bpm !== null
+      return {
+        id: 'clash',
+        text: canSync ? t('The beats aren’t lined up. Press SYNC on the incoming deck.') : t('The beats aren’t lined up. Nudge the jog wheel to align them.'),
+        syncDeck: canSync ? quieter : undefined,
+      }
+    }
+    if (this.everPlayed && this.silentSecs > 3 && allowed('silence')) {
+      return { id: 'silence', text: t('The dance floor is quiet. Press ▶ or raise a fader.') }
+    }
+    return null
+  }
+
+  private finishTransition(): void {
+    const blend = this.blendSecs
+    const clash = this.clashSecs
+    this.blendSecs = 0
+    this.clashSecs = 0
+    this.set({ transitions: this.state.transitions + 1 })
+    this.unlock('first-mix')
+    if (clash >= 1.5) {
+      this.streak = 0
+      return
+    }
+    if (blend >= PERFECT_BLEND) {
+      this.streak++
+      this.notify('success', t('Perfect transition'), t('{n}s seamless blend', { n: blend.toFixed(0) }))
+      this.unlock('perfect')
+      buzz([20, 30, 60])
+    } else if (blend >= SMOOTH_BLEND) {
+      this.streak++
+      this.notify('success', t('Smooth transition'), t('Blend a little longer for a perfect one'))
+      buzz(30)
+    } else {
+      this.streak = 0
+    }
+    if (this.streak >= 3) this.unlock('streak')
+  }
+
+  private tickQuest(a: Deck, b: Deck, xf: number): void {
+    if (this.state.questStep < 0) return
+    const done = (() => {
+      switch (QUEST[this.state.questStep]?.id) {
+        case 'load-a':
+          return a.loaded
+        case 'play-a':
+          return a.getSnapshot().playing
+        case 'xf-a':
+          return xf < 0.08
+        case 'load-b':
+          return b.loaded
+        case 'play-b':
+          return b.getSnapshot().playing
+        case 'sync-b':
+          return tempoMatch(a, b) && this.state.phaseDiff !== null && Math.abs(this.state.phaseDiff) < 0.08
+        case 'crossfade':
+          return xf > 0.92
+        default:
+          return false
+      }
+    })()
+    if (!done) return
+    buzz(25)
+    const next = this.state.questStep + 1
+    if (next >= QUEST.length) {
+      this.set({ questStep: -1, questDone: true })
+      this.notify('success', t('Tutorial complete'), t("You're a DJ now. Keep the music flowing!"))
+      this.save()
+    } else {
+      this.set({ questStep: next })
+    }
+    this.syncCoachMarks()
+  }
+
+  private dominantDeck(weights: number[]): Deck | null {
+    const [wa, wb] = weights
+    const [da, db] = this.engine.decks
+    if (Math.max(wa, wb) < AUDIBLE) return null
+    // Hysteresis: the other deck must clearly take over.
+    if (this.dominant === da) return wb > wa * 1.4 ? db : da
+    if (this.dominant === db) return wa > wb * 1.4 ? da : db
+    return wa >= wb ? da : db
   }
 
   dispose(): void {

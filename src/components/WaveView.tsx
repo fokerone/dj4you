@@ -10,7 +10,14 @@ const ZOOMS = [2, 4, 8, 16, 32] // seconds visible
  * Scrolling waveform centred on the play head, with the beat grid (bar lines
  * brighter), cue marker and a 4-beat counter. Drag to move through the track.
  */
-export function WaveView({ deck, state }: { deck: Deck; state: DeckState }) {
+interface WaveProps {
+  deck: Deck
+  state: DeckState
+  onOpenLibrary: () => void
+  onPickFile: () => void
+}
+
+export function WaveView({ deck, state, onOpenLibrary, onPickFile }: WaveProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const beatsRef = useRef<HTMLDivElement>(null)
   const t = useT()
@@ -148,8 +155,10 @@ export function WaveView({ deck, state }: { deck: Deck; state: DeckState }) {
     })
 
     // Play head
-    g.fillStyle = '#fff'
-    g.fillRect(Math.round(center) - 1, 0, 2, h)
+    if (duration > 0) {
+      g.fillStyle = '#fff'
+      g.fillRect(Math.round(center) - 1, 0, 2, h)
+    }
 
     // Beat counter
     const dots = beatsRef.current?.children
@@ -176,13 +185,13 @@ export function WaveView({ deck, state }: { deck: Deck; state: DeckState }) {
       onPointerCancel={() => (drag.current = null)}
     >
       <canvas ref={canvasRef} />
-      <div ref={beatsRef} className="wave-beats" aria-hidden>
+      <div ref={beatsRef} className={`wave-beats ${state.duration ? '' : 'is-hidden'}`} aria-hidden>
         <i />
         <i />
         <i />
         <i />
       </div>
-      <div className="wave-zoom" onPointerDown={(e) => e.stopPropagation()}>
+      <div className={`wave-zoom ${state.duration ? '' : 'is-hidden'}`} onPointerDown={(e) => e.stopPropagation()}>
         <button aria-label={t('Zoom out')} disabled={zoom === ZOOMS.length - 1} onClick={() => setZoom(zoom + 1)}>
           −
         </button>
@@ -190,7 +199,32 @@ export function WaveView({ deck, state }: { deck: Deck; state: DeckState }) {
           +
         </button>
       </div>
-      {!state.detail && state.duration > 0 && <div className="wave-msg">{t('Analyzing…')}</div>}
+      {state.loading && (
+        <div className="wave-state">
+          <span className="spinner" aria-hidden />
+          <span>{t('Loading track…')}</span>
+        </div>
+      )}
+      {!state.loading && state.analyzing && (
+        <div className="wave-pill">
+          <span className="spinner spinner-small" aria-hidden />
+          {t('Finding the tempo…')}
+        </div>
+      )}
+      {!state.loading && !state.duration && (
+        <div className={`wave-state ${state.error ? 'is-error' : ''}`} onPointerDown={(e) => e.stopPropagation()}>
+          <span className="wave-state-text">{state.error ?? t('Deck {id} is empty', { id: state.id })}</span>
+          <div className="wave-state-actions">
+            <button className="btn btn-small btn-library" onClick={onOpenLibrary}>
+              {t('Library')}
+            </button>
+            <button className="btn btn-small" onClick={onPickFile}>
+              {state.error ? t('Choose another file') : t('Open a file')}
+            </button>
+          </div>
+          <small className="wave-drop-hint">{t('or drop an audio file here')}</small>
+        </div>
+      )}
     </div>
   )
 }

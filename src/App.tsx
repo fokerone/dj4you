@@ -6,12 +6,13 @@ import { LibrarySheet } from './components/LibrarySheet'
 import { LiveButton, LiveSheet } from './components/LiveSheet'
 import { Crossfader, MixerView } from './components/MixerView'
 import { RecButton } from './components/RecButton'
-import { Coach, Hud, PhaseMeter, Popups } from './components/Hud'
+import { HintBar, MenuButton, MenuSheet, Notes, PhaseMeter, PhoneBar, TutorialCard } from './components/Coach'
+import { coach } from './game'
 import { Stage } from './components/Stage'
 import { Welcome } from './components/Welcome'
 import { shouldWelcome } from './game/welcome'
 import { buzz } from './game/haptics'
-import { SHORTCUTS, useShortcuts } from './hooks/useShortcuts'
+import { useShortcuts } from './hooks/useShortcuts'
 import { Brand, LangSwitch } from './components/Brand'
 import { useT } from './i18n'
 import { useStore } from './hooks/useEngine'
@@ -34,9 +35,29 @@ export default function App() {
   const closeLive = useCallback(() => setLiveOpen(false), [])
   const [toast, setToast] = useState<string | null>(null)
   const [welcome, setWelcome] = useState(shouldWelcome)
-  const [keysOpen, setKeysOpen] = useState(false)
-  const toggleKeys = useCallback(() => setKeysOpen((o) => !o), [])
-  useShortcuts(toggleKeys)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const openMenu = useCallback(() => setMenuOpen(true), [])
+  const closeMenu = useCallback(() => setMenuOpen(false), [])
+  const toggleMenu = useCallback(() => setMenuOpen((o) => !o), [])
+  useShortcuts(toggleMenu)
+  const recState = useStore(engine.recorder)
+  const liveState = useStore(engine.live)
+
+  // Don't lose a recording or drop listeners by closing the tab by accident.
+  useEffect(() => {
+    if (!recState.recording && liveState.status !== 'live') return
+    const guard = (e: BeforeUnloadEvent) => {
+      e.preventDefault()
+      e.returnValue = ''
+    }
+    window.addEventListener('beforeunload', guard)
+    return () => window.removeEventListener('beforeunload', guard)
+  }, [recState.recording, liveState.status])
+
+  // Surface recorder problems instead of hiding them in a tooltip.
+  useEffect(() => {
+    if (recState.error) coach.notify('info', recState.error)
+  }, [recState.error])
 
   // A tiny tick of vibration on every control press (phones that support it).
   useEffect(() => {
@@ -65,9 +86,7 @@ export default function App() {
           <Brand />
         </h1>
         <LangSwitch className="topbar-lang" />
-        <button className="btn btn-small btn-keys" onClick={toggleKeys} aria-expanded={keysOpen}>
-          {t('Keys')}
-        </button>
+        <MenuButton onOpen={openMenu} />
       </header>
 
       <nav className="tabs" role="tablist" aria-label={t('Desk sections')}>
@@ -80,8 +99,8 @@ export default function App() {
       </nav>
 
       <main className="desk" data-tab={tab}>
-        <div className="panel-hud">
-          <Hud />
+        <div className="panel-bar">
+          <PhoneBar onMenu={openMenu} />
         </div>
         <div className="panel panel-a">
           <DeckView deck={deckA} other={deckB} onOpenLibrary={openLibrary} />
@@ -105,26 +124,10 @@ export default function App() {
       </main>
 
       <LiveSheet open={liveOpen} onClose={closeLive} />
-      <Coach />
-      <Popups />
-      {keysOpen && (
-        <div className="keys" role="dialog" aria-label={t('Keyboard shortcuts')}>
-          <header>
-            <b>{t('Keyboard shortcuts')}</b>
-            <button className="btn btn-small" onClick={toggleKeys} aria-label={t('Close')}>
-              ✕
-            </button>
-          </header>
-          <dl>
-            {SHORTCUTS.map(([k, v]) => (
-              <div key={k}>
-                <dt>{k}</dt>
-                <dd>{t(v)}</dd>
-              </div>
-            ))}
-          </dl>
-        </div>
-      )}
+      <TutorialCard />
+      <HintBar />
+      <Notes />
+      <MenuSheet open={menuOpen} onClose={closeMenu} onWelcome={() => setWelcome(true)} />
       {welcome && <Welcome onDone={() => setWelcome(false)} />}
 
       <LibrarySheet

@@ -17,7 +17,16 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- Shown until the app has loaded -->
+      <div style="position:fixed;inset:0;display:grid;place-items:center;background:#07080c;color:#f3f6fb;font:700 1.4rem system-ui,sans-serif;letter-spacing:.03em">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:14px">
+          <div style="width:44px;height:44px;border-radius:50%;border:4px solid #1d2230;border-top-color:#22d3ee;border-right-color:#fb923c;animation:s .9s linear infinite"></div>
+          <span>DJ<span style="color:#fb923c">4</span>YOU</span>
+        </div>
+      </div>
+      <style>@keyframes s{to{transform:rotate(360deg)}}</style>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

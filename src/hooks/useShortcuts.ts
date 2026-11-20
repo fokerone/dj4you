@@ -14,6 +14,7 @@ export const SHORTCUTS: [string, string][] = [
 ]
 
 export function useShortcuts(onToggleHelp: () => void): void {
+  // '?' opens the menu, which lists these shortcuts.
   useEffect(() => {
     const [a, b] = engine.decks
     const held = new Set<string>()

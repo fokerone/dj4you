@@ -1,6 +1,6 @@
 import { engine } from '../audio/engine'
-import { Game } from './game'
+import { Coach } from './game'
 
-export const game = new Game(engine)
+export const coach = new Coach(engine)
 
-if (import.meta.env.DEV) (window as unknown as { __game: Game }).__game = game
+if (import.meta.env.DEV) (window as unknown as { __coach: Coach }).__coach = coach
